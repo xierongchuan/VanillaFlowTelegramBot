@@ -10,30 +10,13 @@ use App\Services\Contracts\NotificationServiceInterface;
 use SergiX44\Nutgram\Nutgram;
 
 /**
- * Handle expense issued callback.
- * Refactored to use base class and follow SOLID principles.
+ * Callback handler for accountants to issue full approved amount.
+ * Follows SOLID principles and uses dependency injection.
  */
-
-class ExpenseIssuedCallback extends BaseCallbackHandler
+class ExpenseIssuedFullCallback extends BaseCallbackHandler
 {
     /**
-     * Get approval service from container.
-     */
-    private function getApprovalService(): ExpenseApprovalServiceInterface
-    {
-        return app(ExpenseApprovalServiceInterface::class);
-    }
-
-    /**
-     * Get notification service from container.
-     */
-    private function getNotificationService(): NotificationServiceInterface
-    {
-        return app(NotificationServiceInterface::class);
-    }
-
-    /**
-     * Execute the issued logic.
+     * Execute the full amount issuance logic.
      */
     protected function execute(Nutgram $bot, string $id): void
     {
@@ -55,14 +38,19 @@ class ExpenseIssuedCallback extends BaseCallbackHandler
         $request = $result['request'];
         $requester = $request->requester;
 
-        // Update the message to show issued status
+        // Update the message to show issuance
         $message = sprintf(
-            "💵 Заявка #%d — сумма %s %s\nСтатус: выдано\nПользователь: %s (ID: %d)",
+            <<<MSG
+✅ Заявка #%d выдана бухгалтером
+Пользователь: %s (ID: %d)
+Выданная сумма: %s %s
+Полная сумма выдана
+MSG,
             $request->id,
-            number_format((float)$request->amount, 2, '.', ' '),
-            $request->currency,
             $requester->full_name ?? ($requester->login ?? 'Unknown'),
-            $request->requester_id
+            $request->requester_id,
+            number_format((float) $request->amount, 2, '.', ' '),
+            $request->currency
         );
 
         $this->getNotificationService()->updateMessage($bot, $message);
@@ -73,6 +61,22 @@ class ExpenseIssuedCallback extends BaseCallbackHandler
      */
     protected function getErrorMessage(\Throwable $e): string
     {
-        return 'Ошибка при выдаче заявки.';
+        return 'Ошибка при выдаче полной суммы.';
+    }
+
+    /**
+     * Get approval service instance.
+     */
+    private function getApprovalService(): ExpenseApprovalServiceInterface
+    {
+        return app(ExpenseApprovalServiceInterface::class);
+    }
+
+    /**
+     * Get notification service instance.
+     */
+    private function getNotificationService(): NotificationServiceInterface
+    {
+        return app(NotificationServiceInterface::class);
     }
 }

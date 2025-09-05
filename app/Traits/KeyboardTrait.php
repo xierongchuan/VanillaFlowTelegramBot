@@ -20,7 +20,7 @@ trait KeyboardTrait
         return ReplyKeyboardMarkup::make(resize_keyboard: true, one_time_keyboard: false)
             ->addRow(
                 KeyboardButton::make('📝 Создать заявку'),
-                // KeyboardButton::make('📄 Мои заявки')
+                KeyboardButton::make('📄 Мои заявки')
             );
         // ->addRow(
         //     KeyboardButton::make('📞 Поделиться номером', request_contact: true),
@@ -35,12 +35,25 @@ trait KeyboardTrait
     {
         return ReplyKeyboardMarkup::make(resize_keyboard: true)
             ->addRow(
-                KeyboardButton::make('🔃 Ожидающие заявки')
+                KeyboardButton::make('🔃 Ожидающие заявки'),
+                KeyboardButton::make('📋 История заявок')
             );
         // ->addRow(
         //     KeyboardButton::make('🧾 Отчёты'),
         //     KeyboardButton::make('◀️ Назад')
         // );
+    }
+
+    /**
+     * Клавиатура бухгалтера
+     */
+    public static function accountantMenu(): ReplyKeyboardMarkup
+    {
+        return ReplyKeyboardMarkup::make(resize_keyboard: true)
+            ->addRow(
+                KeyboardButton::make('💰 Ожидающие выдачи'),
+                KeyboardButton::make('💼 История операций')
+            );
     }
 
     /**
@@ -61,6 +74,22 @@ trait KeyboardTrait
         return InlineKeyboardMarkup::make()
             ->addRow(
                 InlineKeyboardButton::make(text: '✅ Выдано', callback_data: $confirmData),
+            );
+    }
+
+    /**
+     * Inline клавиатура: Подтвердить выдачу полной суммы / Выдать иную сумму
+     */
+    public static function inlineConfirmIssuedWithAmount(
+        string $confirmFullData = 'confirm_full',
+        string $confirmDifferentData = 'confirm_different_amount'
+    ): InlineKeyboardMarkup {
+        return InlineKeyboardMarkup::make()
+            ->addRow(
+                InlineKeyboardButton::make(text: '✅ Выдать полную сумму', callback_data: $confirmFullData),
+            )
+            ->addRow(
+                InlineKeyboardButton::make(text: '💰 Выдать иную сумму', callback_data: $confirmDifferentData),
             );
     }
 
