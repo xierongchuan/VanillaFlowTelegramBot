@@ -26,7 +26,7 @@ RUN pecl install redis-6.2.0 \
 # 4) Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/src_telegram_bot_api
+WORKDIR /var/www/src_vanilla_flow_telegram_bot_api
 
 # 5) Установка зависимостей приложения
 COPY composer.json composer.lock ./
