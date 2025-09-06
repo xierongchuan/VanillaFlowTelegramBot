@@ -85,19 +85,7 @@ class TelegramNotificationService implements NotificationServiceInterface
         }
 
         $requester = $request->requester;
-        $message = sprintf(
-            "Заявка #%d подтверждена директором.\nСумма: %s %s\nОжидает выдачи указанной суммы %s (ID: %d)",
-            $request->id,
-            number_format((float) $request->amount, 2, '.', ' '),
-            $request->currency,
-            $requester->full_name ?? $requester->login ?? 'Unknown',
-            $requester->id
-        );
-
-        // Add director's comment for accountant if provided
-        if ($directorComment && $directorComment !== '-') {
-            $message .= "\nКомментарий директора: {$directorComment}";
-        }
+        $message = $this->buildAccountantMessage($request, $directorComment);
 
         $keyboard = static::inlineConfirmIssuedWithAmount(
             "expense:issued_full:{$request->id}",
@@ -134,6 +122,32 @@ class TelegramNotificationService implements NotificationServiceInterface
             ]);
             return false;
         }
+    }
+
+    /**
+     * Build accountant notification message.
+     * Consolidates accountant message building logic.
+     */
+    private function buildAccountantMessage(
+        ExpenseRequest $request,
+        ?string $directorComment = null
+    ): string {
+        $requester = $request->requester;
+        $message = sprintf(
+            "Заявка #%d подтверждена директором.\nСумма: %s %s\nОжидает выдачи указанной суммы %s (ID: %d)",
+            $request->id,
+            number_format((float) $request->amount, 2, '.', ' '),
+            $request->currency,
+            $requester->full_name ?? $requester->login ?? 'Unknown',
+            $requester->id
+        );
+
+        // Add director's comment for accountant if provided
+        if ($directorComment && $directorComment !== '-') {
+            $message .= "\nКомментарий директора: {$directorComment}";
+        }
+
+        return $message;
     }
 
     /**

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\ExpenseStatus;
-use App\Enums\Role;
-use App\Models\AuditLog;
 use App\Models\ExpenseRequest;
 use App\Models\User;
+use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\ExpenseServiceInterface;
 use App\Services\Contracts\NotificationServiceInterface;
+use App\Services\Contracts\UserFinderServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SergiX44\Nutgram\Nutgram;
@@ -23,7 +23,9 @@ use Throwable;
 class ExpenseRequestService implements ExpenseServiceInterface
 {
     public function __construct(
-        private NotificationServiceInterface $notificationService
+        private NotificationServiceInterface $notificationService,
+        private AuditLogServiceInterface $auditLogService,
+        private UserFinderServiceInterface $userFinderService
     ) {
     }
 
@@ -50,18 +52,13 @@ class ExpenseRequestService implements ExpenseServiceInterface
                 ]);
 
                 // Create audit log
-                AuditLog::create([
-                    'table_name' => 'expense_requests',
-                    'record_id' => $request->id,
-                    'actor_id' => $requester->id,
-                    'action' => 'insert',
-                    'payload' => [
-                        'amount' => $amount,
-                        'currency' => $currency,
-                        'description' => $description
-                    ],
-                    'created_at' => now(),
-                ]);
+                $this->auditLogService->logExpenseRequestCreated(
+                    $request->id,
+                    $requester->id,
+                    $amount,
+                    $currency,
+                    $description
+                );
 
                 Log::info("Заявка #{$request->id} успешно создана пользователем {$requester->id}");
 
@@ -99,14 +96,11 @@ class ExpenseRequestService implements ExpenseServiceInterface
 
             $request->delete(); // ON DELETE CASCADE should remove related approvals
 
-            AuditLog::create([
-                'table_name' => 'expense_requests',
-                'record_id' => $requestId,
-                'actor_id' => $actorId,
-                'action' => 'delete',
-                'payload' => ['reason' => $reason],
-                'created_at' => now(),
-            ]);
+            $this->auditLogService->logExpenseRequestDeleted(
+                $requestId,
+                $actorId,
+                $reason
+            );
         });
     }
 
@@ -125,10 +119,7 @@ class ExpenseRequestService implements ExpenseServiceInterface
                 return;
             }
 
-            $director = User::where('company_id', $companyId)
-                ->where('role', Role::DIRECTOR->value)
-                ->whereNotNull('telegram_id')
-                ->first();
+            $director = $this->userFinderService->findDirectorForCompany($companyId);
 
             if (!$director) {
                 Log::info('No director to notify', [

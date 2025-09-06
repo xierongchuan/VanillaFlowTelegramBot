@@ -4,33 +4,51 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Enums\Role;
-use App\Models\ExpenseApproval;
-use App\Models\ExpenseRequest;
-use App\Models\AuditLog;
-use App\Traits\KeyboardTrait;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 use App\Enums\ExpenseStatus;
+use App\Models\ExpenseRequest;
+use App\Models\User;
+use App\Services\Contracts\AuditLogServiceInterface;
+use App\Services\Contracts\ExpenseServiceInterface;
+use App\Services\Contracts\NotificationServiceInterface;
+use App\Services\Contracts\UserFinderServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SergiX44\Nutgram\Nutgram;
 use Throwable;
-use App\Models\User;
 
-class ExpenseService
+/**
+ * Consolidated service for expense request lifecycle management.
+ * Handles creation, deletion, and basic operations for expense requests.
+ * Follows Single Responsibility Principle - manages complete expense request lifecycle.
+ * Follows Dependency Inversion Principle - depends on abstractions.
+ * Eliminates code duplication by consolidating ExpenseRequestService functionality.
+ */
+class ExpenseService implements ExpenseServiceInterface
 {
-    /* Create request */
-    public static function createRequest(
+    public function __construct(
+        private NotificationServiceInterface $notificationService,
+        private AuditLogServiceInterface $auditLogService,
+        private UserFinderServiceInterface $userFinderService
+    ) {
+    }
+
+    /**
+     * Create a new expense request.
+     * Consolidated from ExpenseRequestService to eliminate duplication.
+     */
+    public function createRequest(
         Nutgram $bot,
         User $requester,
         string $description,
         float $amount,
         string $currency = 'UZS'
-    ): null|int {
+    ): ?int {
         try {
-            // 1) Создаём запись в транзакции
+            // Create request in transaction
             $requestId = DB::transaction(function () use ($requester, $description, $amount, $currency) {
-                $req = ExpenseRequest::create([
+                // Create expense request
+                $request = ExpenseRequest::create([
                     'requester_id' => $requester->id,
                     'description' => $description,
                     'amount' => $amount,
@@ -39,161 +57,133 @@ class ExpenseService
                     'company_id' => $requester->company_id,
                 ]);
 
-                AuditLog::create([
-                    'table_name' => 'expense_requests',
-                    'record_id' => $req->id,
-                    'actor_id' => $requester->id,
-                    'action' => 'insert',
-                    'payload' => ['amount' => $amount, 'currency' => $currency],
-                    'created_at' => now(),
-                ]);
+                // Log the creation
+                $this->auditLogService->logExpenseRequestCreated(
+                    $request->id,
+                    $requester->id,
+                    $amount,
+                    $currency,
+                    $description
+                );
 
-                Log::info("Заявка #{$req->id} успешно создана пользователем {$requester->id}");
+                Log::info("Заявка #{$request->id} успешно создана пользователем {$requester->id}");
 
-                return $req->id;
+                return $request->id;
             });
 
-            // 2) Если транзакция успешно закоммичена (вернулся id) - уведомляем директора(ов)
+            // Send notification to director after successful transaction
             if ($requestId !== null) {
-                try {
-                    // Найдём заявителя
-                    if (! $requester) {
-                        Log::warning(
-                            'createRequest: requester not found',
-                            ['requester_id' => $requester->id, 'request_id' => $requestId]
-                        );
-                        return $requestId;
-                    }
-
-                    // company_id предполагается на модели User
-                    $companyId = $requester->company_id ?? null;
-                    if ($companyId === null) {
-                        Log::warning(
-                            'createRequest: requester has no company_id',
-                            ['requester_id' => $requester->id, 'request_id' => $requestId]
-                        );
-                        return $requestId;
-                    }
-
-                    $director = User::where('company_id', $companyId)
-                        ->where('role', Role::DIRECTOR->value)
-                        ->whereNotNull('telegram_id')
-                        ->first();
-
-                    if (empty($director)) {
-                        Log::info(
-                            'createRequest: no director to notify',
-                            ['company_id' => $companyId, 'request_id' => $requestId]
-                        );
-                        return $requestId;
-                    }
-
-                    // подготовим текст и inline-кнопки
-                    $message = sprintf(
-                        "Новая заявка #%d\nПользователь: %s (ID: %d)\nСумма: %s %s\nКомментарий: %s",
-                        $requestId,
-                        $requester->full_name ?? ($requester->login ?? 'Unknown'),
-                        $requester->id,
-                        number_format($amount, 2, '.', ' '),
-                        $currency,
-                        $description ?: '-'
-                    );
-
-                    $confirmData = "expense:confirm:{$requestId}";
-                    $confirmWithCommentData = "expense:confirm_with_comment:{$requestId}";
-                    $cancelData  = "expense:decline:{$requestId}";
-                    $inline = KeyboardTrait::inlineConfirmCommentDecline(
-                        $confirmData,
-                        $confirmWithCommentData,
-                        $cancelData
-                    );
-
-                    // Отправляем всем директору (логируем результат)
-                    try {
-                        // Nutgram sendMessage: chat_id можно указать как first param? используем опцию chat_id
-                        $bot->sendMessage(
-                            $message,
-                            chat_id: $director->telegram_id,
-                            reply_markup: $inline,
-                        );
-
-                        Log::info('createRequest: notified director', [
-                            'director_id' => $director->id,
-                            'director_tg' => $director->telegram_id,
-                            'request_id' => $requestId,
-                        ]);
-                    } catch (Throwable $sendEx) {
-                        Log::error('createRequest: failed sending to director', [
-                            'director_id' => $director->id,
-                            'director_tg' => $director->telegram_id,
-                            'request_id' => $requestId,
-                            'message' => $sendEx->getMessage(),
-                            'trace' => $sendEx->getTraceAsString(),
-                        ]);
-                    }
-                } catch (Throwable $notifyEx) {
-                    // Защищаемся: любые ошибки уведомлений не должны ломать основной процесс
-                    Log::error('createRequest: notification error', [
-                        'request_id' => $requestId,
-                        'message' => $notifyEx->getMessage(),
-                        'trace' => $notifyEx->getTraceAsString(),
-                    ]);
-                }
+                $this->notifyDirector($bot, $requester, $requestId);
             }
 
             return $requestId;
         } catch (Throwable $e) {
             Log::error('Ошибка при создании заявки', [
                 'requester_id' => $requester->id,
-                'amount'       => $amount,
-                'currency'     => $currency,
-                'message'      => $e->getMessage(),
-                'trace'        => $e->getTraceAsString(),
+                'amount' => $amount,
+                'currency' => $currency,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
         }
     }
 
-    /* Notify accountant */
-    public static function sendToAccountant(
-        Nutgram $bot,
-        User $requester,
-        int $requestId,
-        float $amount,
-        string $currency
-    ) {
-        $accountant = User::where('company_id', $requester->company_id)
-            ->where('role', Role::ACCOUNTANT->value)->first();
-
-        $confirmData = "expense:issued:{$requestId}";
-
-        $bot->sendMessage(
-            chat_id: $accountant->telegram_id,
-            text: "Заявка #{$requestId} подтверждена "
-                . "директором.\nСумма: " . number_format((float) $amount, 2, '.', ' ') . " $currency\n"
-                . "Ожидает выдачи указанной суммы "
-                . $requester->full_name . ' (ID: ' . $requester->id . ')',
-            reply_markup: KeyboardTrait::inlineConfirmIssued($confirmData)
-        );
+    /**
+     * Get expense request by ID with related data.
+     * Additional utility method for expense management.
+     */
+    public function getExpenseRequestById(int $requestId): ?ExpenseRequest
+    {
+        return ExpenseRequest::with(['requester', 'approvals'])->find($requestId);
     }
 
-    /* Delete request */
+    /**
+     * Get pending expense requests for a company.
+     * Utility method for listing pending requests.
+     */
+    public function getPendingRequestsForCompany(int $companyId): Collection
+    {
+        return ExpenseRequest::with('requester')
+            ->where('company_id', $companyId)
+            ->where('status', ExpenseStatus::PENDING->value)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get approved expense requests for a company.
+     * Utility method for accountants to see approved requests.
+     */
+    public function getApprovedRequestsForCompany(int $companyId): Collection
+    {
+        return ExpenseRequest::with('requester')
+            ->where('company_id', $companyId)
+            ->where('status', ExpenseStatus::APPROVED->value)
+            ->orderBy('approved_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Delete an expense request.
+     */
     public function deleteRequest(int $requestId, int $actorId, ?string $reason = null): void
     {
         DB::transaction(function () use ($requestId, $actorId, $reason) {
-            $req = ExpenseRequest::where('id', $requestId)->lockForUpdate()->firstOrFail();
+            $request = ExpenseRequest::where('id', $requestId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            $req->delete(); // ON DELETE CASCADE должен удалить связанные approvals
+            $request->delete(); // ON DELETE CASCADE should remove related approvals
 
-            AuditLog::create([
-                'table_name' => 'expense_requests',
-                'record_id' => $requestId,
-                'actor_id' => $actorId,
-                'action' => 'delete',
-                'payload' => ['reason' => $reason],
-                'created_at' => now(),
-            ]);
+            // Log the deletion
+            $this->auditLogService->logExpenseRequestDeleted(
+                $requestId,
+                $actorId,
+                $reason
+            );
         });
+    }
+
+    /**
+     * Notify director about new expense request.
+     */
+    private function notifyDirector(Nutgram $bot, User $requester, int $requestId): void
+    {
+        try {
+            $companyId = $requester->company_id;
+            if ($companyId === null) {
+                Log::warning('Requester has no company_id', [
+                    'requester_id' => $requester->id,
+                    'request_id' => $requestId
+                ]);
+                return;
+            }
+
+            $director = $this->userFinderService->findDirectorForCompany($companyId);
+            if (!$director) {
+                Log::info('No director to notify', [
+                    'company_id' => $companyId,
+                    'request_id' => $requestId
+                ]);
+                return;
+            }
+
+            $request = ExpenseRequest::with('requester')->findOrFail($requestId);
+
+            $this->notificationService->notifyDirectorNewRequest($bot, $director, $request);
+
+            Log::info('Director notified about new request', [
+                'director_id' => $director->id,
+                'request_id' => $requestId,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to notify director', [
+                'request_id' => $requestId,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
 }
