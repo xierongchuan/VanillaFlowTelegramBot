@@ -11,6 +11,7 @@ use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\ExpenseServiceInterface;
 use App\Services\Contracts\NotificationServiceInterface;
 use App\Services\Contracts\UserFinderServiceInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SergiX44\Nutgram\Nutgram;
@@ -102,6 +103,40 @@ class ExpenseRequestService implements ExpenseServiceInterface
                 $reason
             );
         });
+    }
+
+    /**
+     * Get expense request by ID with related data.
+     */
+    public function getExpenseRequestById(int $requestId): ?ExpenseRequest
+    {
+        return ExpenseRequest::with(['requester', 'director', 'accountant'])
+            ->where('id', $requestId)
+            ->first();
+    }
+
+    /**
+     * Get pending expense requests for a company.
+     */
+    public function getPendingRequestsForCompany(int $companyId): Collection
+    {
+        return ExpenseRequest::with(['requester', 'director', 'accountant'])
+            ->where('company_id', $companyId)
+            ->where('status', ExpenseStatus::PENDING->value)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get approved expense requests for a company.
+     */
+    public function getApprovedRequestsForCompany(int $companyId): Collection
+    {
+        return ExpenseRequest::with(['requester', 'director', 'accountant'])
+            ->where('company_id', $companyId)
+            ->where('status', ExpenseStatus::APPROVED->value)
+            ->orderBy('approved_at', 'desc')
+            ->get();
     }
 
     /**
