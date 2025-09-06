@@ -10,7 +10,6 @@ use App\Bot\Commands\Director\PendingExpensesCommand;
 use App\Enums\Role;
 use SergiX44\Nutgram\Nutgram;
 use App\Bot\Middleware\AuthUser;
-use App\Bot\Middleware\ConversationGuard;
 use App\Bot\Middleware\RoleMiddleware;
 use App\Bot\Dispatchers\StartConversationDispatcher;
 use App\Bot\Conversations\User\RequestExpenseConversation;
