@@ -63,10 +63,11 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 // Create approval record
                 ExpenseApproval::create([
                     'expense_request_id' => $requestId,
-                    'approver_id' => $director->id,
-                    'approved' => true,
+                    'actor_id' => $director->id,
+                    'actor_role' => Role::DIRECTOR->value,
+                    'action' => 'approved',
                     'comment' => $comment,
-                    'approved_at' => now(),
+                    'created_at' => now(),
                 ]);
 
                 // Log the approval
@@ -148,10 +149,11 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 // Create approval record (declined)
                 ExpenseApproval::create([
                     'expense_request_id' => $requestId,
-                    'approver_id' => $director->id,
-                    'approved' => false,
+                    'actor_id' => $director->id,
+                    'actor_role' => Role::DIRECTOR->value,
+                    'action' => 'declined',
                     'comment' => $reason,
-                    'approved_at' => now(),
+                    'created_at' => now(),
                 ]);
 
                 // Log the decline
@@ -217,6 +219,16 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
 
                 // Update request status
                 $request->update(['status' => ExpenseStatus::ISSUED->value]);
+
+                // Create approval record for issuance
+                ExpenseApproval::create([
+                    'expense_request_id' => $requestId,
+                    'actor_id' => $accountant->id,
+                    'actor_role' => Role::ACCOUNTANT->value,
+                    'action' => 'issued',
+                    'comment' => null,
+                    'created_at' => now(),
+                ]);
 
                 // Log the issuance
                 $this->auditLogService->logExpenseIssued(
