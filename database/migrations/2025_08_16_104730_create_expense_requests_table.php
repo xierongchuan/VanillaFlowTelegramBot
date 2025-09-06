@@ -20,6 +20,7 @@ return new class () extends Migration {
             $table->string('title', 255)->nullable();
             $table->text('description')->nullable();
             $table->decimal('amount', 12, 2);
+            $table->decimal('issued_amount', 12, 2)->nullable();
             $table->char('currency', 3)->default('USD');
             $table->string('status')->default(ExpenseStatus::PENDING->value);
             $table->unsignedBigInteger('director_id')->nullable();
