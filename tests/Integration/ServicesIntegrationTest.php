@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\ExpenseService;
+use App\Services\ExpenseRequestService;
 use App\Services\TelegramNotificationService;
 use App\Services\AuditLogService;
 use App\Services\UserFinderService;
@@ -30,7 +30,7 @@ describe('Services Integration', function () {
         $validationService = app(ValidationService::class);
         $approvalService = app(ExpenseApprovalService::class);
 
-        $expenseService = new ExpenseService(
+        $expenseService = new ExpenseRequestService(
             $notificationService,
             $auditLogService,
             $userFinderService
@@ -85,11 +85,10 @@ describe('Services Integration', function () {
         // Act 3: Accountant issues payment
         authenticateUser($accountant);
 
-        $issuanceResult = $approvalService->issueRequest(
+        $issuanceResult = $approvalService->issueExpense(
             $mockBot,
             $requestId,
-            $accountant,
-            1000.00 // Full amount
+            $accountant
         );
 
         // Assert 3: Request issued successfully
@@ -193,7 +192,7 @@ describe('Services Integration', function () {
         $auditLogService = app(AuditLogService::class);
         $userFinderService = app(UserFinderService::class);
 
-        $expenseService = new ExpenseService(
+        $expenseService = new ExpenseRequestService(
             $notificationService,
             $auditLogService,
             $userFinderService
@@ -242,7 +241,7 @@ describe('Services Integration', function () {
         $auditLogService = app(AuditLogService::class);
         $userFinderService = app(UserFinderService::class);
 
-        $expenseService = new ExpenseService(
+        $expenseService = new ExpenseRequestService(
             $notificationService,
             $auditLogService,
             $userFinderService

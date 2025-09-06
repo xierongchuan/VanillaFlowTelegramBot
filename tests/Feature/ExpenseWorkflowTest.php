@@ -7,7 +7,7 @@ use App\Models\ExpenseRequest;
 use App\Models\AuditLog;
 use App\Enums\Role;
 use App\Enums\ExpenseStatus;
-use App\Services\ExpenseService;
+use App\Services\ExpenseRequestService;
 use App\Services\TelegramNotificationService;
 use App\Services\AuditLogService;
 use App\Services\UserFinderService;
@@ -21,7 +21,7 @@ beforeEach(function () {
     $this->auditLogService = app(AuditLogService::class);
     $this->userFinderService = app(UserFinderService::class);
 
-    $this->expenseService = new ExpenseService(
+    $this->expenseService = new ExpenseRequestService(
         $this->notificationService,
         $this->auditLogService,
         $this->userFinderService

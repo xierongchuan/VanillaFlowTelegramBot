@@ -7,7 +7,6 @@ namespace App\Bot\Commands\Director;
 use App\Bot\Abstracts\BaseCommandHandler;
 use App\Models\User;
 use App\Models\ExpenseRequest;
-use App\Models\AuditLog;
 use App\Enums\ExpenseStatus;
 use SergiX44\Nutgram\Nutgram;
 
@@ -69,20 +68,10 @@ class HistoryCommand extends BaseCommandHandler
             if ($request->issued_at) {
                 $message .= "💸 Выдано: " . $request->issued_at->format('d.m.Y H:i') . "\n";
 
-                // Check if amount was different from approved
-                $auditLog = AuditLog::where('table_name', 'expense_requests')
-                    ->where('record_id', $request->id)
-                    ->where('action', ExpenseStatus::ISSUED->value)
-                    ->first();
-
-                if ($auditLog && isset($auditLog->payload['original_amount'], $auditLog->payload['issued_amount'])) {
-                    $originalAmount = (float)$auditLog->payload['original_amount'];
-                    $issuedAmount = (float)$auditLog->payload['issued_amount'];
-
-                    if (abs($originalAmount - $issuedAmount) > 0.01) { // Account for float precision
-                        $formattedIssuedAmount = number_format($issuedAmount, 2, '.', ' ');
-                        $message .= "⚠️ Выдана иная сумма: {$formattedIssuedAmount} {$request->currency}\n";
-                    }
+                // Check if issued amount is different from original amount
+                if ($request->issued_amount !== null && abs($request->amount - $request->issued_amount) > 0.01) {
+                    $formattedIssuedAmount = number_format($request->issued_amount, 2, '.', ' ');
+                    $message .= "⚠️ Выдана иная сумма: {$formattedIssuedAmount} {$request->currency}\n";
                 }
             }
 

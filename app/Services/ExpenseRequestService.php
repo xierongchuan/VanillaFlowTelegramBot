@@ -18,8 +18,11 @@ use SergiX44\Nutgram\Nutgram;
 use Throwable;
 
 /**
- * Service for expense request creation and management.
- * Follows Single Responsibility Principle - only handles expense creation.
+ * Primary service for expense request lifecycle management.
+ * Handles creation, deletion, and basic operations for expense requests.
+ * Follows Single Responsibility Principle - manages complete expense request lifecycle.
+ * Follows Dependency Inversion Principle - depends on abstractions.
+ * Consolidated from ExpenseService to eliminate duplication.
  */
 class ExpenseRequestService implements ExpenseServiceInterface
 {
@@ -107,20 +110,20 @@ class ExpenseRequestService implements ExpenseServiceInterface
 
     /**
      * Get expense request by ID with related data.
+     * Additional utility method for expense management.
      */
     public function getExpenseRequestById(int $requestId): ?ExpenseRequest
     {
-        return ExpenseRequest::with(['requester', 'director', 'accountant'])
-            ->where('id', $requestId)
-            ->first();
+        return ExpenseRequest::with(['requester', 'approvals', 'director', 'accountant'])->find($requestId);
     }
 
     /**
      * Get pending expense requests for a company.
+     * Utility method for listing pending requests.
      */
     public function getPendingRequestsForCompany(int $companyId): Collection
     {
-        return ExpenseRequest::with(['requester', 'director', 'accountant'])
+        return ExpenseRequest::with('requester')
             ->where('company_id', $companyId)
             ->where('status', ExpenseStatus::PENDING->value)
             ->orderBy('created_at', 'desc')
@@ -129,10 +132,11 @@ class ExpenseRequestService implements ExpenseServiceInterface
 
     /**
      * Get approved expense requests for a company.
+     * Utility method for accountants to see approved requests.
      */
     public function getApprovedRequestsForCompany(int $companyId): Collection
     {
-        return ExpenseRequest::with(['requester', 'director', 'accountant'])
+        return ExpenseRequest::with('requester')
             ->where('company_id', $companyId)
             ->where('status', ExpenseStatus::APPROVED->value)
             ->orderBy('approved_at', 'desc')

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\ExpenseService;
+use App\Services\ExpenseRequestService;
 use App\Services\Contracts\NotificationServiceInterface;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\UserFinderServiceInterface;
@@ -23,7 +23,7 @@ beforeEach(function () {
     $this->mockAuditLogService = Mockery::mock(AuditLogServiceInterface::class);
     $this->mockUserFinderService = Mockery::mock(UserFinderServiceInterface::class);
 
-    $this->expenseService = new ExpenseService(
+    $this->expenseRequestService = new ExpenseRequestService(
         $this->mockNotificationService,
         $this->mockAuditLogService,
         $this->mockUserFinderService
@@ -34,7 +34,7 @@ afterEach(function () {
     Mockery::close();
 });
 
-describe('ExpenseService::createRequest', function () {
+describe('ExpenseRequestService::createRequest', function () {
     it('creates expense request successfully with audit log', function () {
         // Arrange
         $requester = User::factory()->create([
@@ -71,7 +71,7 @@ describe('ExpenseService::createRequest', function () {
             ->andReturn(true);
 
         // Act
-        $requestId = $this->expenseService->createRequest(
+        $requestId = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Test expense description',
@@ -106,7 +106,7 @@ describe('ExpenseService::createRequest', function () {
             ->andThrow(new Exception('Database error'));
 
         // Act
-        $requestId = $this->expenseService->createRequest(
+        $requestId = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -140,7 +140,7 @@ describe('ExpenseService::createRequest', function () {
         $this->mockNotificationService->shouldNotReceive('notifyDirectorNewRequest');
 
         // Act
-        $requestId = $this->expenseService->createRequest(
+        $requestId = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -177,7 +177,7 @@ describe('ExpenseService::createRequest', function () {
             ->andThrow(new Exception('Telegram API error'));
 
         // Act
-        $requestId = $this->expenseService->createRequest(
+        $requestId = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -201,7 +201,7 @@ describe('ExpenseService::createRequest', function () {
             ->times(3);
 
         // Act & Assert - Test different parameter combinations
-        $requestId1 = $this->expenseService->createRequest(
+        $requestId1 = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             '',
@@ -210,7 +210,7 @@ describe('ExpenseService::createRequest', function () {
         );
         expect($requestId1)->toBeInt();
 
-        $requestId2 = $this->expenseService->createRequest(
+        $requestId2 = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Very long description that might exceed certain limits but should still be processed correctly',
@@ -218,7 +218,7 @@ describe('ExpenseService::createRequest', function () {
         );
         expect($requestId2)->toBeInt();
 
-        $requestId3 = $this->expenseService->createRequest(
+        $requestId3 = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Default currency test',
@@ -240,7 +240,7 @@ describe('ExpenseService::createRequest', function () {
         $this->mockNotificationService->shouldNotReceive('notifyDirectorNewRequest');
 
         // Act
-        $requestId = $this->expenseService->createRequest(
+        $requestId = $this->expenseRequestService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -252,7 +252,7 @@ describe('ExpenseService::createRequest', function () {
     });
 });
 
-describe('ExpenseService::deleteRequest', function () {
+describe('ExpenseRequestService::deleteRequest', function () {
     it('deletes request with audit log', function () {
         // Arrange
         $user = User::factory()->create();
@@ -268,7 +268,7 @@ describe('ExpenseService::deleteRequest', function () {
         $reason = 'Test deletion';
 
         // Act
-        $this->expenseService->deleteRequest($expenseRequest->id, $actor->id, $reason);
+        $this->expenseRequestService->deleteRequest($expenseRequest->id, $actor->id, $reason);
 
         // Assert
         expect(ExpenseRequest::find($expenseRequest->id))->toBeNull();
@@ -279,7 +279,7 @@ describe('ExpenseService::deleteRequest', function () {
         $nonExistentId = 999999;
 
         // Act & Assert
-        expect(fn () => $this->expenseService->deleteRequest($nonExistentId, 1, 'Test'))
+        expect(fn () => $this->expenseRequestService->deleteRequest($nonExistentId, 1, 'Test'))
             ->toThrow(Illuminate\Database\Eloquent\ModelNotFoundException::class);
     });
 
@@ -296,14 +296,14 @@ describe('ExpenseService::deleteRequest', function () {
             ->with($expenseRequest->id, $actor->id, null);
 
         // Act
-        $this->expenseService->deleteRequest($expenseRequest->id, $actor->id);
+        $this->expenseRequestService->deleteRequest($expenseRequest->id, $actor->id);
 
         // Assert
         expect(ExpenseRequest::find($expenseRequest->id))->toBeNull();
     });
 });
 
-describe('ExpenseService::getExpenseRequestById', function () {
+describe('ExpenseRequestService::getExpenseRequestById', function () {
     it('returns expense request with relations', function () {
         // Arrange
         $requester = User::factory()->create();
@@ -312,7 +312,7 @@ describe('ExpenseService::getExpenseRequestById', function () {
         ]);
 
         // Act
-        $result = $this->expenseService->getExpenseRequestById($expenseRequest->id);
+        $result = $this->expenseRequestService->getExpenseRequestById($expenseRequest->id);
 
         // Assert
         expect($result)
@@ -324,14 +324,14 @@ describe('ExpenseService::getExpenseRequestById', function () {
 
     it('returns null for non-existent request', function () {
         // Act
-        $result = $this->expenseService->getExpenseRequestById(999999);
+        $result = $this->expenseRequestService->getExpenseRequestById(999999);
 
         // Assert
         expect($result)->toBeNull();
     });
 });
 
-describe('ExpenseService::getPendingRequestsForCompany', function () {
+describe('ExpenseRequestService::getPendingRequestsForCompany', function () {
     it('returns only pending requests for specified company', function () {
         // Arrange
         $company1Id = 1;
@@ -360,7 +360,7 @@ describe('ExpenseService::getPendingRequestsForCompany', function () {
         ]);
 
         // Act
-        $result = $this->expenseService->getPendingRequestsForCompany($company1Id);
+        $result = $this->expenseRequestService->getPendingRequestsForCompany($company1Id);
 
         // Assert
         expect($result)
@@ -370,7 +370,7 @@ describe('ExpenseService::getPendingRequestsForCompany', function () {
     });
 });
 
-describe('ExpenseService::getApprovedRequestsForCompany', function () {
+describe('ExpenseRequestService::getApprovedRequestsForCompany', function () {
     it('returns only approved requests for specified company', function () {
         // Arrange
         $company1Id = 1;
@@ -399,7 +399,7 @@ describe('ExpenseService::getApprovedRequestsForCompany', function () {
         ]);
 
         // Act
-        $result = $this->expenseService->getApprovedRequestsForCompany($company1Id);
+        $result = $this->expenseRequestService->getApprovedRequestsForCompany($company1Id);
 
         // Assert
         expect($result)

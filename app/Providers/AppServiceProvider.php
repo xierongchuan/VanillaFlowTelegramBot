@@ -12,7 +12,7 @@ use App\Services\Contracts\UserFinderServiceInterface;
 use App\Services\Contracts\ValidationServiceInterface;
 use App\Services\Contracts\ExpenseApprovalServiceInterface;
 use App\Services\AuditLogService;
-use App\Services\ExpenseService;
+use App\Services\ExpenseRequestService;
 use App\Services\TelegramNotificationService;
 use App\Services\UserFinderService;
 use App\Services\ValidationService;
@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         // Bind interfaces to concrete implementations
         $this->app->bind(
             ExpenseServiceInterface::class,
-            ExpenseService::class
+            ExpenseRequestService::class
         );
 
         $this->app->bind(
