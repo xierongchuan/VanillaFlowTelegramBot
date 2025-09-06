@@ -58,14 +58,19 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 }
 
                 // Update request status
-                $request->update(['status' => ExpenseStatus::APPROVED->value]);
+                $request->update([
+                    'status' => ExpenseStatus::APPROVED->value,
+                    'approved_at' => now(),
+                    'director_id' => $director->id,
+                    'director_comment' => $comment,
+                ]);
 
                 // Create approval record
                 ExpenseApproval::create([
                     'expense_request_id' => $requestId,
                     'actor_id' => $director->id,
                     'actor_role' => Role::DIRECTOR->value,
-                    'action' => 'approved',
+                    'action' => ExpenseStatus::APPROVED->value,
                     'comment' => $comment,
                     'created_at' => now(),
                 ]);
@@ -74,7 +79,7 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 $this->auditLogService->logExpenseApprovalAction(
                     $requestId,
                     $director->id,
-                    'approved',
+                    ExpenseStatus::APPROVED->value,
                     $comment
                 );
 
@@ -218,12 +223,7 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 }
 
                 // Update request status
-                $request->update([
-                    'status' => ExpenseStatus::ISSUED->value,
-                    'accountant_id' => $accountant->id,
-                    'issued_at' => now(),
-                    'issued_amount' => $request->amount, // Set issued_amount to the full approved amount
-                ]);
+                $request->update(['status' => ExpenseStatus::ISSUED->value]);
 
                 // Create approval record for issuance
                 ExpenseApproval::create([
@@ -238,8 +238,7 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 // Log the issuance
                 $this->auditLogService->logExpenseIssued(
                     $requestId,
-                    $accountant->id,
-                    $request->amount // Pass the full amount as issued amount
+                    $accountant->id
                 );
 
                 // Notify requester about issuance
