@@ -8,11 +8,24 @@ use App\Models\AuditLog;
 use App\Enums\Role;
 use App\Enums\ExpenseStatus;
 use App\Services\ExpenseService;
+use App\Services\TelegramNotificationService;
+use App\Services\AuditLogService;
+use App\Services\UserFinderService;
 use SergiX44\Nutgram\Nutgram;
 
 beforeEach(function () {
     $this->mockBot = Mockery::mock(Nutgram::class);
-    app()->instance(Nutgram::class, $this->mockBot);
+
+    // Create real service instances for feature testing
+    $this->notificationService = app(TelegramNotificationService::class);
+    $this->auditLogService = app(AuditLogService::class);
+    $this->userFinderService = app(UserFinderService::class);
+
+    $this->expenseService = new ExpenseService(
+        $this->notificationService,
+        $this->auditLogService,
+        $this->userFinderService
+    );
 });
 
 afterEach(function () {
@@ -44,13 +57,13 @@ describe('Expense Request Workflow', function () {
                 'full_name' => 'Bob Accountant',
             ]);
 
-            // Mock bot messages
+            // Mock bot messages for director notification
             $this->mockBot->shouldReceive('sendMessage')
-                ->twice() // Once to director, once to accountant
+                ->once() // Only director notification in createRequest
                 ->andReturn(null);
 
             // Act - Step 1: Create expense request
-            $requestId = ExpenseService::createRequest(
+            $requestId = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'Office supplies for team',
@@ -73,23 +86,34 @@ describe('Expense Request Workflow', function () {
                 ->first();
             expect($creationAudit)->not->toBeNull();
 
-            // Act - Step 2: Director approves request
-            $expenseRequest->update(['status' => ExpenseStatus::APPROVED->value]);
+            // Act - Step 2: Director approves request (simulate approval workflow)
+            $expenseRequest->update([
+                'status' => ExpenseStatus::APPROVED->value,
+                'director_id' => $director->id,
+                'approved_at' => now(),
+            ]);
 
-            // Act - Step 3: Send to accountant
-            ExpenseService::sendToAccountant(
+            // Mock accountant notification
+            $this->mockBot->shouldReceive('sendMessage')
+                ->once()
+                ->andReturn(null);
+
+            // Act - Step 3: Notify accountant (simulate notification service)
+            $this->notificationService->notifyAccountantApproved(
                 $this->mockBot,
-                $requester,
-                $requestId,
-                2500.50,
-                'UZS'
+                $accountant,
+                $expenseRequest->fresh()
             );
 
             // Assert - Verify approval status
             expect($expenseRequest->fresh()->status)->toBe(ExpenseStatus::APPROVED->value);
 
             // Act - Step 4: Accountant issues payment
-            $expenseRequest->update(['status' => ExpenseStatus::ISSUED->value]);
+            $expenseRequest->update([
+                'status' => ExpenseStatus::ISSUED->value,
+                'accountant_id' => $accountant->id,
+                'issued_at' => now(),
+            ]);
 
             // Assert - Verify final status
             expect($expenseRequest->fresh()->status)->toBe(ExpenseStatus::ISSUED->value);
@@ -113,7 +137,7 @@ describe('Expense Request Workflow', function () {
                 ->andReturn(null);
 
             // Act - Create and decline request
-            $requestId = ExpenseService::createRequest(
+            $requestId = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'Unnecessary expense',
@@ -138,7 +162,7 @@ describe('Expense Request Workflow', function () {
             ]);
 
             // Act
-            $requestId = ExpenseService::createRequest(
+            $requestId = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'Request without director',
@@ -173,21 +197,21 @@ describe('Expense Request Workflow', function () {
                 ->andReturn(null);
 
             // Act - Create multiple requests
-            $requestId1 = ExpenseService::createRequest(
+            $requestId1 = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'First expense',
                 100.00
             );
 
-            $requestId2 = ExpenseService::createRequest(
+            $requestId2 = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'Second expense',
                 200.00
             );
 
-            $requestId3 = ExpenseService::createRequest(
+            $requestId3 = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'Third expense',
@@ -224,7 +248,7 @@ describe('Expense Request Workflow', function () {
 
             // Act & Assert
             foreach ($extremeAmounts as $amount) {
-                $requestId = ExpenseService::createRequest(
+                $requestId = $this->expenseService->createRequest(
                     $this->mockBot,
                     $requester,
                     "Extreme amount test: {$amount}",
@@ -260,7 +284,7 @@ describe('Expense Request Workflow', function () {
 
             // Act & Assert
             foreach ($currencies as $currency) {
-                $requestId = ExpenseService::createRequest(
+                $requestId = $this->expenseService->createRequest(
                     $this->mockBot,
                     $requester,
                     "Currency test: {$currency}",
@@ -285,12 +309,11 @@ describe('Expense Request Workflow', function () {
                 'status' => ExpenseStatus::PENDING->value,
             ]);
 
-            $expenseService = new ExpenseService();
-            $actor = User::factory()->create(); // Create real actor user
+            $actor = User::factory()->create();
             $reason = 'Duplicate request';
 
             // Act
-            $expenseService->deleteRequest($expenseRequest->id, $actor->id, $reason);
+            $this->expenseService->deleteRequest($expenseRequest->id, $actor->id, $reason);
 
             // Assert
             expect(ExpenseRequest::find($expenseRequest->id))->toBeNull();
@@ -307,11 +330,10 @@ describe('Expense Request Workflow', function () {
 
         it('handles deletion of non-existent request', function () {
             // Arrange
-            $expenseService = new ExpenseService();
             $nonExistentId = 999999;
 
             // Act & Assert
-            expect(fn () => $expenseService->deleteRequest($nonExistentId, 1, 'Test'))
+            expect(fn () => $this->expenseService->deleteRequest($nonExistentId, 1, 'Test'))
                 ->toThrow(Illuminate\Database\Eloquent\ModelNotFoundException::class);
         });
     });
@@ -341,14 +363,14 @@ describe('Expense Request Workflow', function () {
                 ->andReturn(null);
 
             // Act
-            $company1RequestId = ExpenseService::createRequest(
+            $company1RequestId = $this->expenseService->createRequest(
                 $this->mockBot,
                 $company1User,
                 'Company 1 expense',
                 1000.00
             );
 
-            $company2RequestId = ExpenseService::createRequest(
+            $company2RequestId = $this->expenseService->createRequest(
                 $this->mockBot,
                 $company2User,
                 'Company 2 expense',
@@ -394,7 +416,7 @@ describe('Expense Request Workflow', function () {
                 ->andReturn(null);
 
             // Act - Create request
-            $requestId = ExpenseService::createRequest(
+            $requestId = $this->expenseService->createRequest(
                 $this->mockBot,
                 $requester,
                 'Audit trail test',
@@ -402,9 +424,8 @@ describe('Expense Request Workflow', function () {
             );
 
             // Act - Delete request
-            $expenseService = new ExpenseService();
-            $deleteActor = User::factory()->create(); // Create real actor for deletion
-            $expenseService->deleteRequest($requestId, $deleteActor->id, 'Testing audit trail');
+            $deleteActor = User::factory()->create();
+            $this->expenseService->deleteRequest($requestId, $deleteActor->id, 'Testing audit trail');
 
             // Assert - Verify complete audit trail
             $auditLogs = AuditLog::where('record_id', $requestId)

@@ -32,6 +32,24 @@ expect()->extend('toBeOne', function () {
     return $this->toBe(1);
 });
 
+expect()->extend('toBeValidAmount', function () {
+    return $this->toBeFloat()->toBeGreaterThan(0);
+});
+
+expect()->extend('toBeValidCurrency', function () {
+    return $this->toBeString()->toMatch('/^[A-Z]{3}$/');
+});
+
+expect()->extend('toBeValidExpenseStatus', function () {
+    $validStatuses = ['pending', 'approved', 'declined', 'issued'];
+    return $this->toBeIn($validStatuses);
+});
+
+expect()->extend('toBeValidRole', function () {
+    $validRoles = ['user', 'director', 'accountant'];
+    return $this->toBeIn($validRoles);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Functions
@@ -43,7 +61,50 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-// function something()
-// {
-//     // ..
-// }
+/**
+ * Create a user with a specific role for testing
+ */
+function createUserWithRole(string $role, array $attributes = []): \App\Models\User
+{
+    return \App\Models\User::factory()->create(array_merge([
+        'role' => $role,
+        'company_id' => 1,
+    ], $attributes));
+}
+
+/**
+ * Create an expense request for testing
+ */
+function createExpenseRequest(\App\Models\User $requester, array $attributes = []): \App\Models\ExpenseRequest
+{
+    return \App\Models\ExpenseRequest::factory()->create(array_merge([
+        'requester_id' => $requester->id,
+        'company_id' => $requester->company_id,
+    ], $attributes));
+}
+
+/**
+ * Create a mock Telegram bot for testing
+ */
+function mockTelegramBot(): \Mockery\MockInterface
+{
+    return \Mockery::mock(\SergiX44\Nutgram\Nutgram::class);
+}
+
+/**
+ * Set up authentication for a user in tests
+ */
+function authenticateUser(\App\Models\User $user): void
+{
+    \Illuminate\Support\Facades\Auth::shouldReceive('user')->andReturn($user);
+}
+
+/**
+ * Create multiple expense requests with different statuses
+ */
+function createExpenseRequestsWithStatuses(\App\Models\User $requester, array $statuses): \Illuminate\Support\Collection
+{
+    return collect($statuses)->map(function ($status) use ($requester) {
+        return createExpenseRequest($requester, ['status' => $status]);
+    });
+}

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Services\ExpenseService;
+use App\Services\Contracts\NotificationServiceInterface;
+use App\Services\Contracts\AuditLogServiceInterface;
+use App\Services\Contracts\UserFinderServiceInterface;
 use App\Models\User;
 use App\Models\ExpenseRequest;
 use App\Models\AuditLog;
@@ -11,10 +14,20 @@ use App\Enums\ExpenseStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SergiX44\Nutgram\Nutgram;
+use Mockery\MockInterface;
 
 beforeEach(function () {
     Log::spy();
     $this->mockBot = Mockery::mock(Nutgram::class);
+    $this->mockNotificationService = Mockery::mock(NotificationServiceInterface::class);
+    $this->mockAuditLogService = Mockery::mock(AuditLogServiceInterface::class);
+    $this->mockUserFinderService = Mockery::mock(UserFinderServiceInterface::class);
+
+    $this->expenseService = new ExpenseService(
+        $this->mockNotificationService,
+        $this->mockAuditLogService,
+        $this->mockUserFinderService
+    );
 });
 
 afterEach(function () {
@@ -36,15 +49,29 @@ describe('ExpenseService::createRequest', function () {
             'telegram_id' => 987654321,
         ]);
 
-        $this->mockBot->shouldReceive('sendMessage')
+        // Mock the dependencies
+        $this->mockUserFinderService->shouldReceive('findDirectorForCompany')
             ->once()
-            ->withArgs(function ($message, $chatId, $replyMarkup) use ($director) {
-                return str_contains($message, 'Новая заявка') &&
-                       $chatId === $director->telegram_id;
+            ->with(1)
+            ->andReturn($director);
+
+        $this->mockAuditLogService->shouldReceive('logExpenseRequestCreated')
+            ->once()
+            ->withArgs(function ($requestId, $requesterId, $amount, $currency, $description) use ($requester) {
+                return is_int($requestId) &&
+                       $requesterId === $requester->id &&
+                       $amount === 1500.50 &&
+                       $currency === 'UZS' &&
+                       $description === 'Test expense description';
             });
 
+        $this->mockNotificationService->shouldReceive('notifyDirectorNewRequest')
+            ->once()
+            ->with($this->mockBot, $director, Mockery::type(ExpenseRequest::class))
+            ->andReturn(true);
+
         // Act
-        $requestId = ExpenseService::createRequest(
+        $requestId = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
             'Test expense description',
@@ -64,18 +91,6 @@ describe('ExpenseService::createRequest', function () {
             ->and($expenseRequest->currency)->toBe('UZS')
             ->and($expenseRequest->status)->toBe(ExpenseStatus::PENDING->value)
             ->and($expenseRequest->company_id)->toBe($requester->company_id);
-
-        // Verify audit log was created
-        $auditLog = AuditLog::where('record_id', $requestId)
-            ->where('table_name', 'expense_requests')
-            ->where('action', 'insert')
-            ->first();
-
-        expect($auditLog)
-            ->not->toBeNull()
-            ->and($auditLog->actor_id)->toBe($requester->id)
-            ->and($auditLog->payload)->toHaveKey('amount', 1500.50)
-            ->and($auditLog->payload)->toHaveKey('currency', 'UZS');
     });
 
     it('returns null when database transaction fails', function () {
@@ -85,13 +100,13 @@ describe('ExpenseService::createRequest', function () {
             'company_id' => 1,
         ]);
 
-        // Mock DB transaction to throw exception
+        // Force a database error by using invalid data
         DB::shouldReceive('transaction')
             ->once()
             ->andThrow(new Exception('Database error'));
 
         // Act
-        $requestId = ExpenseService::createRequest(
+        $requestId = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -112,8 +127,20 @@ describe('ExpenseService::createRequest', function () {
             'company_id' => 1,
         ]);
 
+        // Mock finding no director
+        $this->mockUserFinderService->shouldReceive('findDirectorForCompany')
+            ->once()
+            ->with(1)
+            ->andReturn(null);
+
+        $this->mockAuditLogService->shouldReceive('logExpenseRequestCreated')
+            ->once();
+
+        // No notification should be sent if no director found
+        $this->mockNotificationService->shouldNotReceive('notifyDirectorNewRequest');
+
         // Act
-        $requestId = ExpenseService::createRequest(
+        $requestId = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -122,8 +149,6 @@ describe('ExpenseService::createRequest', function () {
 
         // Assert
         expect($requestId)->toBeInt()->toBeGreaterThan(0);
-        Log::shouldHaveReceived('info')
-            ->with(Mockery::pattern('/createRequest: (no director|successfully created)/'), Mockery::type('array'));
     });
 
     it('handles notification failure gracefully', function () {
@@ -139,12 +164,20 @@ describe('ExpenseService::createRequest', function () {
             'telegram_id' => 987654321,
         ]);
 
-        $this->mockBot->shouldReceive('sendMessage')
+        $this->mockUserFinderService->shouldReceive('findDirectorForCompany')
+            ->once()
+            ->with(1)
+            ->andReturn($director);
+
+        $this->mockAuditLogService->shouldReceive('logExpenseRequestCreated')
+            ->once();
+
+        $this->mockNotificationService->shouldReceive('notifyDirectorNewRequest')
             ->once()
             ->andThrow(new Exception('Telegram API error'));
 
         // Act
-        $requestId = ExpenseService::createRequest(
+        $requestId = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
             'Test description',
@@ -153,20 +186,22 @@ describe('ExpenseService::createRequest', function () {
 
         // Assert
         expect($requestId)->toBeInt()->toBeGreaterThan(0);
-        Log::shouldHaveReceived('error')
-            ->once()
-            ->with('createRequest: failed sending to director', Mockery::type('array'));
     });
 
-    it('validates input parameters', function () {
+    it('validates input parameters correctly', function () {
         // Arrange
         $requester = User::factory()->create([
             'role' => Role::USER->value,
             'company_id' => 1,
         ]);
 
+        $this->mockUserFinderService->shouldReceive('findDirectorForCompany')
+            ->andReturn(null);
+        $this->mockAuditLogService->shouldReceive('logExpenseRequestCreated')
+            ->times(3);
+
         // Act & Assert - Test different parameter combinations
-        $requestId1 = ExpenseService::createRequest(
+        $requestId1 = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
             '',
@@ -175,70 +210,45 @@ describe('ExpenseService::createRequest', function () {
         );
         expect($requestId1)->toBeInt();
 
-        $requestId2 = ExpenseService::createRequest(
+        $requestId2 = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
             'Very long description that might exceed certain limits but should still be processed correctly',
             999999.99
         );
         expect($requestId2)->toBeInt();
-    });
-});
 
-describe('ExpenseService::sendToAccountant', function () {
-    it('sends notification to accountant successfully', function () {
+        $requestId3 = $this->expenseService->createRequest(
+            $this->mockBot,
+            $requester,
+            'Default currency test',
+            100.00
+        );
+        expect($requestId3)->toBeInt();
+    });
+
+    it('handles requester without company_id gracefully', function () {
         // Arrange
         $requester = User::factory()->create([
             'role' => Role::USER->value,
-            'company_id' => 1,
+            'company_id' => null,
         ]);
 
-        $accountant = User::factory()->create([
-            'role' => Role::ACCOUNTANT->value,
-            'company_id' => 1,
-            'telegram_id' => 555666777,
-        ]);
+        // Should not be called because transaction will fail
+        $this->mockAuditLogService->shouldNotReceive('logExpenseRequestCreated');
+        $this->mockUserFinderService->shouldNotReceive('findDirectorForCompany');
+        $this->mockNotificationService->shouldNotReceive('notifyDirectorNewRequest');
 
-        $requestId = 123;
-        $amount = 2500.75;
-        $currency = 'UZS';
-
-        $this->mockBot->shouldReceive('sendMessage')
-            ->once()
-            ->andReturn(null);
-
-        // Act - Call the method without expecting exceptions
-        ExpenseService::sendToAccountant(
+        // Act
+        $requestId = $this->expenseService->createRequest(
             $this->mockBot,
             $requester,
-            $requestId,
-            $amount,
-            $currency
+            'Test description',
+            1000.00
         );
 
-        // Assert - If we reach here, no exception was thrown
-        expect(true)->toBeTrue();
-    });
-
-    it('handles missing accountant gracefully', function () {
-        // Arrange
-        $requester = User::factory()->create([
-            'role' => Role::USER->value,
-            'company_id' => 1,
-        ]);
-
-        // No accountant exists for this company
-
-        // Act & Assert - Should throw exception when trying to access null accountant properties
-        $this->expectException(ErrorException::class);
-
-        ExpenseService::sendToAccountant(
-            $this->mockBot,
-            $requester,
-            123,
-            1000.00,
-            'UZS'
-        );
+        // Assert - should return null because company_id is required in database
+        expect($requestId)->toBeNull();
     });
 });
 
@@ -246,63 +256,155 @@ describe('ExpenseService::deleteRequest', function () {
     it('deletes request with audit log', function () {
         // Arrange
         $user = User::factory()->create();
-        $actor = User::factory()->create(); // Create a real actor
+        $actor = User::factory()->create();
         $expenseRequest = ExpenseRequest::factory()->create([
             'requester_id' => $user->id,
         ]);
 
-        $expenseService = new ExpenseService();
+        $this->mockAuditLogService->shouldReceive('logExpenseRequestDeleted')
+            ->once()
+            ->with($expenseRequest->id, $actor->id, 'Test deletion');
+
         $reason = 'Test deletion';
 
         // Act
-        $expenseService->deleteRequest($expenseRequest->id, $actor->id, $reason);
+        $this->expenseService->deleteRequest($expenseRequest->id, $actor->id, $reason);
 
         // Assert
         expect(ExpenseRequest::find($expenseRequest->id))->toBeNull();
-
-        $auditLog = AuditLog::where('record_id', $expenseRequest->id)
-            ->where('table_name', 'expense_requests')
-            ->where('action', 'delete')
-            ->first();
-
-        expect($auditLog)
-            ->not->toBeNull()
-            ->and($auditLog->actor_id)->toBe($actor->id)
-            ->and($auditLog->payload)->toHaveKey('reason', $reason);
     });
 
     it('handles non-existent request', function () {
         // Arrange
-        $expenseService = new ExpenseService();
         $nonExistentId = 999999;
 
         // Act & Assert
-        expect(fn () => $expenseService->deleteRequest($nonExistentId, 1, 'Test'))
+        expect(fn () => $this->expenseService->deleteRequest($nonExistentId, 1, 'Test'))
             ->toThrow(Illuminate\Database\Eloquent\ModelNotFoundException::class);
     });
 
     it('deletes request without reason', function () {
         // Arrange
         $user = User::factory()->create();
-        $actor = User::factory()->create(); // Create a real actor
+        $actor = User::factory()->create();
         $expenseRequest = ExpenseRequest::factory()->create([
             'requester_id' => $user->id,
         ]);
 
-        $expenseService = new ExpenseService();
+        $this->mockAuditLogService->shouldReceive('logExpenseRequestDeleted')
+            ->once()
+            ->with($expenseRequest->id, $actor->id, null);
 
         // Act
-        $expenseService->deleteRequest($expenseRequest->id, $actor->id);
+        $this->expenseService->deleteRequest($expenseRequest->id, $actor->id);
 
         // Assert
         expect(ExpenseRequest::find($expenseRequest->id))->toBeNull();
+    });
+});
 
-        $auditLog = AuditLog::where('record_id', $expenseRequest->id)
-            ->where('action', 'delete')
-            ->first();
+describe('ExpenseService::getExpenseRequestById', function () {
+    it('returns expense request with relations', function () {
+        // Arrange
+        $requester = User::factory()->create();
+        $expenseRequest = ExpenseRequest::factory()->create([
+            'requester_id' => $requester->id,
+        ]);
 
-        expect($auditLog)
+        // Act
+        $result = $this->expenseService->getExpenseRequestById($expenseRequest->id);
+
+        // Assert
+        expect($result)
             ->not->toBeNull()
-            ->and($auditLog->payload)->toHaveKey('reason', null);
+            ->and($result->id)->toBe($expenseRequest->id)
+            ->and($result->requester)->not->toBeNull()
+            ->and($result->requester->id)->toBe($requester->id);
+    });
+
+    it('returns null for non-existent request', function () {
+        // Act
+        $result = $this->expenseService->getExpenseRequestById(999999);
+
+        // Assert
+        expect($result)->toBeNull();
+    });
+});
+
+describe('ExpenseService::getPendingRequestsForCompany', function () {
+    it('returns only pending requests for specified company', function () {
+        // Arrange
+        $company1Id = 1;
+        $company2Id = 2;
+
+        $user1 = User::factory()->create(['company_id' => $company1Id]);
+        $user2 = User::factory()->create(['company_id' => $company2Id]);
+
+        // Create requests
+        ExpenseRequest::factory()->create([
+            'requester_id' => $user1->id,
+            'company_id' => $company1Id,
+            'status' => ExpenseStatus::PENDING->value,
+        ]);
+
+        ExpenseRequest::factory()->create([
+            'requester_id' => $user1->id,
+            'company_id' => $company1Id,
+            'status' => ExpenseStatus::APPROVED->value, // Different status
+        ]);
+
+        ExpenseRequest::factory()->create([
+            'requester_id' => $user2->id,
+            'company_id' => $company2Id,
+            'status' => ExpenseStatus::PENDING->value, // Different company
+        ]);
+
+        // Act
+        $result = $this->expenseService->getPendingRequestsForCompany($company1Id);
+
+        // Assert
+        expect($result)
+            ->toHaveCount(1)
+            ->and($result->first()->status)->toBe(ExpenseStatus::PENDING->value)
+            ->and($result->first()->company_id)->toBe($company1Id);
+    });
+});
+
+describe('ExpenseService::getApprovedRequestsForCompany', function () {
+    it('returns only approved requests for specified company', function () {
+        // Arrange
+        $company1Id = 1;
+        $company2Id = 2;
+
+        $user1 = User::factory()->create(['company_id' => $company1Id]);
+        $user2 = User::factory()->create(['company_id' => $company2Id]);
+
+        // Create requests
+        ExpenseRequest::factory()->create([
+            'requester_id' => $user1->id,
+            'company_id' => $company1Id,
+            'status' => ExpenseStatus::APPROVED->value,
+        ]);
+
+        ExpenseRequest::factory()->create([
+            'requester_id' => $user1->id,
+            'company_id' => $company1Id,
+            'status' => ExpenseStatus::PENDING->value, // Different status
+        ]);
+
+        ExpenseRequest::factory()->create([
+            'requester_id' => $user2->id,
+            'company_id' => $company2Id,
+            'status' => ExpenseStatus::APPROVED->value, // Different company
+        ]);
+
+        // Act
+        $result = $this->expenseService->getApprovedRequestsForCompany($company1Id);
+
+        // Assert
+        expect($result)
+            ->toHaveCount(1)
+            ->and($result->first()->status)->toBe(ExpenseStatus::APPROVED->value)
+            ->and($result->first()->company_id)->toBe($company1Id);
     });
 });

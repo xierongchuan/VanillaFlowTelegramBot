@@ -56,4 +56,9 @@ class ExpenseRequest extends Model
     {
         return $this->belongsTo(User::class, 'accountant_id');
     }
+
+    public function approvals()
+    {
+        return $this->hasMany(ExpenseApproval::class, 'expense_request_id');
+    }
 }
