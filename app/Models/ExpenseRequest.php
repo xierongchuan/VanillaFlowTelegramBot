@@ -24,6 +24,7 @@ class ExpenseRequest extends Model
         'title',
         'description',
         'amount',
+        'issued_amount',
         'currency',
         'status',
         'director_id',
@@ -36,6 +37,7 @@ class ExpenseRequest extends Model
 
     protected $casts = [
         'amount' => 'float',
+        'issued_amount' => 'float',
         'approved_at' => 'datetime',
         'issued_at' => 'datetime',
         'created_at' => 'datetime',

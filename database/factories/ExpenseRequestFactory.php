@@ -28,6 +28,7 @@ class ExpenseRequestFactory extends Factory
             'title' => fake()->sentence(3),
             'description' => fake()->sentence(10),
             'amount' => fake()->randomFloat(2, 10, 10000),
+            'issued_amount' => null, // Default to null as most requests aren't issued yet
             'currency' => fake()->randomElement(['UZS', 'USD', 'EUR']),
             'status' => fake()->randomElement([
                 ExpenseStatus::PENDING->value,
@@ -106,8 +107,15 @@ class ExpenseRequestFactory extends Factory
     /**
      * Indicate that the expense request should be issued.
      */
-    public function issued(): static
+    public function issued(?float $issuedAmount = null): static
     {
-        return $this->status(ExpenseStatus::ISSUED);
+        return $this->state(function (array $attributes) use ($issuedAmount) {
+            // If issuedAmount is provided, use it; otherwise use the final amount from attributes
+            return [
+                'status' => ExpenseStatus::ISSUED->value,
+                'issued_amount' => $issuedAmount, // Will be null if not provided, which is fine
+                'issued_at' => now(),
+            ];
+        });
     }
 }

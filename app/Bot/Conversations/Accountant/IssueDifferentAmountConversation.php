@@ -109,7 +109,7 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
                 );
                 $bot->sendMessage($message);
             } else {
-                $bot->sendMessage('Ошибка: ' . ($result['message'] ?? 'Не удалось выдать заявку'));
+                $bot->sendMessage('Ошибка: ' . ('Не удалось выдать заявку'));
             }
 
             $this->end();
@@ -149,11 +149,12 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
                     'created_at' => now(),
                 ]);
 
-                // Update request - keep original amount in amount field for audit
+                // Update request - save the issued amount in the new issued_amount field
                 $request->update([
                     'status' => ExpenseStatus::ISSUED->value,
                     'accountant_id' => $accountant->id,
                     'issued_at' => now(),
+                    'issued_amount' => $newAmount, // Save the different amount to issued_amount field
                     'updated_at' => now(),
                 ]);
 

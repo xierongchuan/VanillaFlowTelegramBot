@@ -51,7 +51,8 @@ abstract class BaseConversationHandler extends Conversation
 
         $bot->sendMessage(
             'Произошла ошибка при обработке запроса. Попробуйте ещё раз или обратитесь к администратору.'
-            . "\nID ошибки: {$errorId}"
+            . "\nID ошибки: `{$errorId}`",
+            parse_mode: 'Markdown',
         );
 
         $this->end();

@@ -11,7 +11,7 @@ class AuthUser
 {
     public function __invoke(Nutgram $bot, $next)
     {
-        $tgId = $bot->user()?->id ?? $bot->from()?->id ?? null;
+        $tgId = $bot->userId() ?? $bot->user()?->id ?? $bot->from()?->id ?? null;
         if (!$tgId) {
             $bot->sendMessage('Не получается определить ваш Telegram ID.');
             return;

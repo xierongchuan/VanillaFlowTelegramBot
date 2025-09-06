@@ -218,7 +218,12 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 }
 
                 // Update request status
-                $request->update(['status' => ExpenseStatus::ISSUED->value]);
+                $request->update([
+                    'status' => ExpenseStatus::ISSUED->value,
+                    'accountant_id' => $accountant->id,
+                    'issued_at' => now(),
+                    'issued_amount' => $request->amount, // Set issued_amount to the full approved amount
+                ]);
 
                 // Create approval record for issuance
                 ExpenseApproval::create([
@@ -233,7 +238,8 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 // Log the issuance
                 $this->auditLogService->logExpenseIssued(
                     $requestId,
-                    $accountant->id
+                    $accountant->id,
+                    $request->amount // Pass the full amount as issued amount
                 );
 
                 // Notify requester about issuance
