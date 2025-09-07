@@ -20,9 +20,9 @@ class UserResource extends JsonResource
             'id'           => $this->id,
             'login'        => $this->login,
             'full_name'    => $this->full_name,
-            'role'         => $this->in_bot_role,
+            'role'         => $this->role,
             'telegram_id'  => $this->telegram_id,
-            'phone_number' => $this->phone_number,
+            'phone_number' => $this->phone,
             'company_id'   => $this->company_id,
             // 'status'       => $this->status,
         ];

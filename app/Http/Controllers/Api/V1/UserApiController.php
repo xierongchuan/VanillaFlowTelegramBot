@@ -7,72 +7,139 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Exception;
 
 class UserApiController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $perPage = (int) $request->query('per_page', '15');
-        $phone = (string) $request->query('phone', '');
+        try {
+            // Validate pagination parameters
+            $request->validate([
+                'per_page' => 'integer|min:1|max:100',
+                'page' => 'integer|min:1',
+                'phone' => 'string|max:50',
+            ]);
 
-        // Если передан phone -> делаем поиск по нормализованному номеру (только цифры)
-        if ($phone !== '') {
-            $normalized = $this->normalizePhone($phone);
-
-            // Если после нормализации пусто — возвращаем пустую страницу
-            if ($normalized === '') {
-                return UserResource::collection(collect([]));
-            }
-
-            // Определяем драйвер БД
-            $driver = config('database.default');
+            $perPage = (int) $request->query('per_page', '15');
+            $phone = (string) $request->query('phone', '');
 
             $query = User::query();
 
-            if ($driver === 'pgsql') {
-                $query->whereRaw("regexp_replace(phone_number, '\\\\D', '', 'g') LIKE ?", ["%{$normalized}%"]);
-            } elseif ($driver === 'mysql') {
-                $query->whereRaw("REGEXP_REPLACE(phone_number, '[^0-9]', '') LIKE ?", ["%{$normalized}%"]);
-            } else {
-                $query->whereRaw(
-                    "REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '+', ''), '-', '') LIKE ?",
-                    ["%{$normalized}%"]
-                );
+            // Если передан phone -> делаем поиск по нормализованному номеру (только цифры)
+            if ($phone !== '') {
+                $normalized = $this->normalizePhone($phone);
+
+                // Если после нормализации пусто — возвращаем пустую страницу
+                if ($normalized === '') {
+                    return response()->json([
+                        'success' => true,
+                        'data' => [],
+                        'pagination' => [
+                            'current_page' => 1,
+                            'last_page' => 1,
+                            'per_page' => $perPage,
+                            'total' => 0,
+                            'from' => null,
+                            'to' => null,
+                        ],
+                    ]);
+                }
+
+                // Определяем драйвер БД
+                $driver = config('database.default');
+
+                if ($driver === 'pgsql') {
+                    $query->whereRaw("regexp_replace(phone, '\\\\D', '', 'g') LIKE ?", ["%{$normalized}%"]);
+                } elseif ($driver === 'mysql') {
+                    $query->whereRaw("REGEXP_REPLACE(phone, '[^0-9]', '') LIKE ?", ["%{$normalized}%"]);
+                } else {
+                    $query->whereRaw(
+                        "REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', '') LIKE ?",
+                        ["%{$normalized}%"]
+                    );
+                }
             }
+
             $users = $query->orderByDesc('created_at')->paginate($perPage);
+            $data = UserResource::collection($users->items());
 
-            return UserResource::collection($users);
-        }
-
-        // Без фильтра — стандартная пагинация
-        $users = User::orderByDesc('created_at')->paginate($perPage);
-        return UserResource::collection($users);
-    }
-
-    public function show($id)
-    {
-        $user = User::find($id);
-
-        if (! $user) {
             return response()->json([
-                'message' => 'Пользователь не найден'
-            ], 404);
+                'success' => true,
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $users->currentPage(),
+                    'last_page' => $users->lastPage(),
+                    'per_page' => $users->perPage(),
+                    'total' => $users->total(),
+                    'from' => $users->firstItem(),
+                    'to' => $users->lastItem(),
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while fetching users',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
         }
-
-        return new UserResource($user);
     }
 
-    public function status($id)
+    public function show($id): JsonResponse
     {
-        $user = User::find($id);
+        try {
+            $user = User::find($id);
 
-        // Если пользователь не найден или поле active = false → возвращаем is_active = false
-        $isActive = $user && ($user->status == 'active');
+            if (! $user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Пользователь не найден'
+                ], 404);
+            }
 
-        return response()->json([
-            'is_active' => (bool) $isActive,
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => new UserResource($user),
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while fetching user',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
+        }
+    }
+
+    public function status($id): JsonResponse
+    {
+        try {
+            $user = User::find($id);
+
+            // If user exists, they are considered active
+            $isActive = (bool) $user;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'is_active' => $isActive,
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while checking user status',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
+        }
     }
 
     /**

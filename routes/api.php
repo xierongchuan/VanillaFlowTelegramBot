@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ExpenseRequestController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\UserApiController;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ Route::prefix('v1')->group(function () {
     Route::delete(
         '/session',
         [SessionController::class, 'destroy']
-    )->middleware(['auth:sanctum', 'throttle:5,1440']);
+    )->middleware(['auth:sanctum', 'throttle:50,1440']);
 
     // Проверка работоспособности API
     Route::get('/up', function () {
@@ -40,5 +41,19 @@ Route::prefix('v1')->group(function () {
             Route::get('/users', [UserApiController::class, 'index']);
             Route::get('/users/{id}', [UserApiController::class, 'show']);
             Route::get('/users/{id}/status', [UserApiController::class, 'status']);
+
+            // Expense Request endpoints
+            Route::get(
+                '/companies/{companyId}/expenses/approved',
+                [ExpenseRequestController::class, 'getApprovedRequests']
+            );
+            Route::get(
+                '/companies/{companyId}/expenses/declined',
+                [ExpenseRequestController::class, 'getDeclinedRequests']
+            );
+            Route::get(
+                '/companies/{companyId}/expenses/issued',
+                [ExpenseRequestController::class, 'getIssuedRequests']
+            );
         });
 });
