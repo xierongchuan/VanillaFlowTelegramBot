@@ -21,7 +21,7 @@ class AuthController extends Controller
                 'string',
                 'min:12',
                 'max:255',
-                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/'
+                'regex:/^[a-zA-Z0-9]+$/'
             ],
         ]);
 
