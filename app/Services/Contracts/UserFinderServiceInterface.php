@@ -23,12 +23,12 @@ interface UserFinderServiceInterface
     public function findDirectorForCompany(int $companyId): ?User;
 
     /**
-     * Find accountant for a company.
+     * Find cashier for a company.
      *
      * @param int $companyId Company ID
-     * @return User|null Accountant user or null if not found
+     * @return User|null Cashier user or null if not found
      */
-    public function findAccountantForCompany(int $companyId): ?User;
+    public function findCashierForCompany(int $companyId): ?User;
 
     /**
      * Find users by role for a company.
@@ -53,10 +53,10 @@ interface UserFinderServiceInterface
     public function findDirectorsForCompany(int $companyId): Collection;
 
     /**
-     * Find all accountants for a company.
+     * Find all cashiers for a company.
      *
      * @param int $companyId Company ID
-     * @return Collection Collection of accountant users
+     * @return Collection Collection of cashier users
      */
-    public function findAccountantsForCompany(int $companyId): Collection;
+    public function findCashiersForCompany(int $companyId): Collection;
 }

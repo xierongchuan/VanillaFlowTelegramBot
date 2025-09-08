@@ -29,8 +29,8 @@ class ExpenseRequestResource extends JsonResource
             ),
             'status' => $this->status,
             'issuer_name' => $this->when(
-                $this->status === ExpenseStatus::ISSUED->value && $this->accountant,
-                $this->accountant->full_name ?? 'Unknown'
+                $this->status === ExpenseStatus::ISSUED->value && $this->cashier,
+                $this->cashier->full_name ?? 'Unknown'
             ),
         ];
     }

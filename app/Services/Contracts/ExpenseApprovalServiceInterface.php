@@ -50,12 +50,12 @@ interface ExpenseApprovalServiceInterface
      *
      * @param Nutgram $bot Bot instance
      * @param int $requestId Expense request ID
-     * @param User $accountant Accountant issuing the expense
+     * @param User $cashier Cashier issuing the expense
      * @return array{success: bool, message?: string, request?: ExpenseRequest}
      */
     public function issueExpense(
         Nutgram $bot,
         int $requestId,
-        User $accountant
+        User $cashier
     ): array;
 }

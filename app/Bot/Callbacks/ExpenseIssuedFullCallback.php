@@ -10,7 +10,7 @@ use App\Services\Contracts\NotificationServiceInterface;
 use SergiX44\Nutgram\Nutgram;
 
 /**
- * Callback handler for accountants to issue full approved amount.
+ * Callback handler for cashiers to issue full approved amount.
  * Follows SOLID principles and uses dependency injection.
  */
 class ExpenseIssuedFullCallback extends BaseCallbackHandler
@@ -22,13 +22,13 @@ class ExpenseIssuedFullCallback extends BaseCallbackHandler
     {
         $bot->answerCallbackQuery();
 
-        $accountant = $this->validateUser($bot);
+        $cashier = $this->validateUser($bot);
         $requestId = (int) $id;
 
         $result = $this->getApprovalService()->issueExpense(
             $bot,
             $requestId,
-            $accountant
+            $cashier
         );
 
         if (!$result['success']) {
@@ -41,7 +41,7 @@ class ExpenseIssuedFullCallback extends BaseCallbackHandler
         // Update the message to show issuance
         $message = sprintf(
             <<<MSG
-✅ Заявка #%d выдана бухгалтером
+✅ Заявка #%d выдана кассиром
 Пользователь: %s (ID: %d)
 Выданная сумма: %s %s
 Полная сумма выдана

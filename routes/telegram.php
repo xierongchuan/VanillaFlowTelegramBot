@@ -54,19 +54,19 @@ $bot->onText(
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
 ->middleware(AuthUser::class);
 
-// Accountant Commands
+// Cashier Commands
 $bot->onText(
     '💰 Ожидающие выдачи',
-    \App\Bot\Commands\Accountant\PendingExpensesCommand::class
+    \App\Bot\Commands\Cashier\PendingExpensesCommand::class
 )
-->middleware(new RoleMiddleware([Role::ACCOUNTANT->value]))
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
 ->middleware(AuthUser::class);
 
 $bot->onText(
     '💼 История операций',
-    \App\Bot\Commands\Accountant\HistoryCommand::class
+    \App\Bot\Commands\Cashier\HistoryCommand::class
 )
-->middleware(new RoleMiddleware([Role::ACCOUNTANT->value]))
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
 ->middleware(AuthUser::class);
 
 // Director Callbacks
@@ -91,24 +91,24 @@ $bot->onCallbackQueryData(
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
 ->middleware(AuthUser::class);
 
-// Accountant Callbacks
+// Cashier Callbacks
 $bot->onCallbackQueryData(
     'expense:issued:{id}',
     \App\Bot\Callbacks\ExpenseIssuedCallback::class
 )
-->middleware(new RoleMiddleware([Role::ACCOUNTANT->value]))
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
 ->middleware(AuthUser::class);
 
 $bot->onCallbackQueryData(
     'expense:issued_full:{id}',
     \App\Bot\Callbacks\ExpenseIssuedFullCallback::class
 )
-->middleware(new RoleMiddleware([Role::ACCOUNTANT->value]))
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
 ->middleware(AuthUser::class);
 
 $bot->onCallbackQueryData(
     'expense:issued_different:{id}',
-    \App\Bot\Conversations\Accountant\IssueDifferentAmountConversation::class
+    \App\Bot\Conversations\Cashier\IssueDifferentAmountConversation::class
 )
-->middleware(new RoleMiddleware([Role::ACCOUNTANT->value]))
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
 ->middleware(AuthUser::class);

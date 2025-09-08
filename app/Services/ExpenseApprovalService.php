@@ -92,12 +92,12 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                     $comment
                 );
 
-                // Find and notify accountant
-                $accountant = $this->userFinderService->findAccountantForCompany($request->company_id);
-                if ($accountant) {
-                    $this->notificationService->notifyAccountantApproved(
+                // Find and notify cashier
+                $cashier = $this->userFinderService->findCashierForCompany($request->company_id);
+                if ($cashier) {
+                    $this->notificationService->notifyCashierApproved(
                         $bot,
-                        $accountant,
+                        $cashier,
                         $request,
                         $comment
                     );
@@ -204,10 +204,10 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
     public function issueExpense(
         Nutgram $bot,
         int $requestId,
-        User $accountant
+        User $cashier
     ): array {
         try {
-            return DB::transaction(function () use ($bot, $requestId, $accountant) {
+            return DB::transaction(function () use ($bot, $requestId, $cashier) {
                 // Find and lock the request
                 $request = ExpenseRequest::with('requester')
                     ->where('id', $requestId)
@@ -228,8 +228,8 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 // Create approval record for issuance
                 ExpenseApproval::create([
                     'expense_request_id' => $requestId,
-                    'actor_id' => $accountant->id,
-                    'actor_role' => Role::ACCOUNTANT->value,
+                    'actor_id' => $cashier->id,
+                    'actor_role' => Role::CASHIER->value,
                     'action' => 'issued',
                     'comment' => null,
                     'created_at' => now(),
@@ -238,7 +238,7 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 // Log the issuance
                 $this->auditLogService->logExpenseIssued(
                     $requestId,
-                    $accountant->id
+                    $cashier->id
                 );
 
                 // Notify requester about issuance
@@ -251,7 +251,7 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
 
                 Log::info("Expense issued", [
                     'request_id' => $requestId,
-                    'accountant_id' => $accountant->id
+                    'cashier_id' => $cashier->id
                 ]);
 
                 return ['success' => true, 'request' => $request];
@@ -259,7 +259,7 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
         } catch (Throwable $e) {
             Log::error("Failed to issue expense", [
                 'request_id' => $requestId,
-                'accountant_id' => $accountant->id,
+                'cashier_id' => $cashier->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

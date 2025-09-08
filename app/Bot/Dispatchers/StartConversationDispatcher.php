@@ -31,7 +31,7 @@ class StartConversationDispatcher
             'guest'      => \App\Bot\Conversations\Guest\StartConversation::class,
             'user'      => \App\Bot\Commands\User\StartCommand::class,
             'director'   => \App\Bot\Commands\Director\StartCommand::class,
-            'accountant' => \App\Bot\Commands\Accountant\StartCommand::class,
+            'cashier' => \App\Bot\Commands\Cashier\StartCommand::class,
         ];
 
         $target = $map[$role] ?? null;

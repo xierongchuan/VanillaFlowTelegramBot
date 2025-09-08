@@ -109,7 +109,7 @@ class StartConversation extends BaseConversation
         return match ($role) {
             Role::USER->value => static::userMenu(),
             Role::DIRECTOR->value => static::directorMenu(),
-            Role::ACCOUNTANT->value => static::accountantMenu(),
+            Role::CASHIER->value => static::cashierMenu(),
             default => static::removeKeyboard()
         };
     }

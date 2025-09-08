@@ -68,31 +68,31 @@ class TelegramNotificationService implements NotificationServiceInterface
     }
 
     /**
-     * Notify accountant about approved expense.
+     * Notify cashier about approved expense.
      */
-    public function notifyAccountantApproved(
+    public function notifyCashierApproved(
         Nutgram $bot,
-        User $accountant,
+        User $cashier,
         ExpenseRequest $request,
         ?string $directorComment = null
     ): bool {
-        if (!$accountant->telegram_id) {
-            Log::warning('Cannot notify accountant without telegram_id', [
-                'accountant_id' => $accountant->id,
+        if (!$cashier->telegram_id) {
+            Log::warning('Cannot notify cashier without telegram_id', [
+                'cashier_id' => $cashier->id,
                 'request_id' => $request->id
             ]);
             return false;
         }
 
         $requester = $request->requester;
-        $message = $this->buildAccountantMessage($request, $directorComment);
+        $message = $this->buildCashierMessage($request, $directorComment);
 
         $keyboard = static::inlineConfirmIssuedWithAmount(
             "expense:issued_full:{$request->id}",
             "expense:issued_different:{$request->id}"
         );
 
-        return $this->sendMessage($bot, $accountant->telegram_id, $message, $keyboard);
+        return $this->sendMessage($bot, $cashier->telegram_id, $message, $keyboard);
     }
 
     /**
@@ -125,10 +125,10 @@ class TelegramNotificationService implements NotificationServiceInterface
     }
 
     /**
-     * Build accountant notification message.
-     * Consolidates accountant message building logic.
+     * Build cashier notification message.
+     * Consolidates cashier message building logic.
      */
-    private function buildAccountantMessage(
+    private function buildCashierMessage(
         ExpenseRequest $request,
         ?string $directorComment = null
     ): string {
@@ -142,7 +142,7 @@ class TelegramNotificationService implements NotificationServiceInterface
             $requester->id
         );
 
-        // Add director's comment for accountant if provided
+        // Add director's comment for cashier if provided
         if ($directorComment && $directorComment !== '-') {
             $message .= "\nКомментарий директора: {$directorComment}";
         }
@@ -177,7 +177,7 @@ class TelegramNotificationService implements NotificationServiceInterface
                 $request->description ?: '-'
             );
         } elseif ($status === ExpenseStatus::ISSUED->value) {
-            $message .= " бухгалтером.\nВы можете получить средства.";
+            $message .= " бухгалтером.\nВы можете получить средства у кассира.";
         }
 
         if ($comment && $comment !== '-') {

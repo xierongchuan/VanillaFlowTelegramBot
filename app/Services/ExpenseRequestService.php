@@ -114,7 +114,7 @@ class ExpenseRequestService implements ExpenseServiceInterface
      */
     public function getExpenseRequestById(int $requestId): ?ExpenseRequest
     {
-        return ExpenseRequest::with(['requester', 'approvals', 'director', 'accountant'])->find($requestId);
+        return ExpenseRequest::with(['requester', 'approvals', 'director', 'cashier'])->find($requestId);
     }
 
     /**
@@ -132,7 +132,7 @@ class ExpenseRequestService implements ExpenseServiceInterface
 
     /**
      * Get approved expense requests for a company.
-     * Utility method for accountants to see approved requests.
+     * Utility method for cashiers to see approved requests.
      */
     public function getApprovedRequestsForCompany(int $companyId): Collection
     {

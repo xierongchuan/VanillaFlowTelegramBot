@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Bot\Commands\Accountant;
+namespace App\Bot\Commands\Cashier;
 
 use App\Bot\Abstracts\BaseCommandHandler;
 use App\Enums\Role;
@@ -10,7 +10,7 @@ use SergiX44\Nutgram\Nutgram;
 use App\Models\User;
 
 /**
- * Start command for accountants.
+ * Start command for cashiers.
  * Refactored to use base class and follow SOLID principles.
  */
 
@@ -20,7 +20,7 @@ class StartCommand extends BaseCommandHandler
     protected ?string $description = '';
 
     /**
-     * Execute the start command logic for accountants.
+     * Execute the start command logic for cashiers.
      */
     protected function execute(Nutgram $bot, User $user): void
     {
@@ -28,7 +28,7 @@ class StartCommand extends BaseCommandHandler
 
         $bot->sendMessage(
             'Добро пожаловать ' . $role . ' ' . $user->full_name . '!',
-            reply_markup: static::accountantMenu()
+            reply_markup: static::cashierMenu()
         );
     }
 }

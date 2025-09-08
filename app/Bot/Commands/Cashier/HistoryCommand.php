@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Bot\Commands\Accountant;
+namespace App\Bot\Commands\Cashier;
 
 use App\Bot\Abstracts\BaseCommandHandler;
 use App\Models\User;
@@ -12,21 +12,21 @@ use App\Enums\ExpenseStatus;
 use SergiX44\Nutgram\Nutgram;
 
 /**
- * History command for accountants.
- * Shows requests processed by the accountant and approved requests requiring issuance.
+ * History command for cashiers.
+ * Shows requests processed by the cashier and approved requests requiring issuance.
  */
 class HistoryCommand extends BaseCommandHandler
 {
-    protected string $command = 'accountant_history';
+    protected string $command = 'cashier_history';
     protected ?string $description = 'Show expense request history';
 
     /**
-     * Execute the history command logic for accountants.
+     * Execute the history command logic for cashiers.
      */
     protected function execute(Nutgram $bot, User $user): void
     {
-        // Get requests from the same company that reached accountant stage
-        $requests = ExpenseRequest::with(['requester', 'director', 'accountant'])
+        // Get requests from the same company that reached cashier stage
+        $requests = ExpenseRequest::with(['requester', 'director', 'cashier'])
             ->where('company_id', $user->company_id)
             ->whereIn('status', ['approved', 'issued'])
             ->orderBy('created_at', 'asc')
@@ -36,7 +36,7 @@ class HistoryCommand extends BaseCommandHandler
         if ($requests->isEmpty()) {
             $bot->sendMessage(
                 "📋 Пока нет заявок для обработки.",
-                reply_markup: static::accountantMenu()
+                reply_markup: static::cashierMenu()
             );
             return;
         }
@@ -63,13 +63,13 @@ class HistoryCommand extends BaseCommandHandler
             //     $message .= "👔 Директор: {$request->director->full_name}\n";
             // }
 
-            // if ($request->accountant) {
-            //     $accountantName = $request->accountant->full_name;
+            // if ($request->cashier) {
+            //     $cashierName = $request->cashier->full_name;
             //     // Highlight if current user processed it
-            //     if ($request->accountant_id === $user->id) {
-            //         $accountantName = "💼 *{$accountantName}* (Вы)";
+            //     if ($request->cashier_id === $user->id) {
+            //         $cashierName = "💼 *{$cashierName}* (Вы)";
             //     }
-            //     $message .= "💼 Бухгалтер: {$accountantName}\n";
+            //     $message .= "💼 Кассир: {$cashierName}\n";
             // }
 
             // Add timestamps for processed requests
@@ -100,7 +100,7 @@ class HistoryCommand extends BaseCommandHandler
         $bot->sendMessage(
             $message,
             parse_mode: 'Markdown',
-            reply_markup: static::accountantMenu()
+            reply_markup: static::cashierMenu()
         );
     }
 }

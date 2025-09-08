@@ -24,7 +24,7 @@ return new class () extends Migration {
             $table->char('currency', 3)->default('USD');
             $table->string('status')->default(ExpenseStatus::PENDING->value);
             $table->unsignedBigInteger('director_id')->nullable();
-            $table->unsignedBigInteger('accountant_id')->nullable();
+            $table->unsignedBigInteger('cashier_id')->nullable();
             $table->text('director_comment')->nullable();
             $table->bigInteger('company_id');
             $table->timestampTz('approved_at')->nullable();
@@ -34,7 +34,7 @@ return new class () extends Migration {
 
             $table->foreign('requester_id')->references('id')->on('users');
             $table->foreign('director_id')->references('id')->on('users');
-            $table->foreign('accountant_id')->references('id')->on('users');
+            $table->foreign('cashier_id')->references('id')->on('users');
         });
 
         // Skip PostgreSQL specific alterations for SQLite
@@ -71,7 +71,7 @@ return new class () extends Migration {
         Schema::table('expense_requests', function (Blueprint $table) {
             $table->dropForeign(['requester_id']);
             $table->dropForeign(['director_id']);
-            $table->dropForeign(['accountant_id']);
+            $table->dropForeign(['cashier_id']);
         });
 
         Schema::dropIfExists('expense_requests');

@@ -45,9 +45,9 @@ trait KeyboardTrait
     }
 
     /**
-     * Клавиатура бухгалтера
+     * Клавиатура кассира
      */
-    public static function accountantMenu(): ReplyKeyboardMarkup
+    public static function cashierMenu(): ReplyKeyboardMarkup
     {
         return ReplyKeyboardMarkup::make(resize_keyboard: true)
             ->addRow(

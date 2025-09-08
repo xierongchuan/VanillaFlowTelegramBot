@@ -67,9 +67,9 @@ describe('User Model', function () {
             'company_id' => 1,
         ]);
 
-        $accountant = User::create([
-            'login' => 'accountant1',
-            'role' => Role::ACCOUNTANT->value,
+        $cashier = User::create([
+            'login' => 'cashier1',
+            'role' => Role::CASHIER->value,
             'company_id' => 1,
         ]);
 
@@ -81,7 +81,7 @@ describe('User Model', function () {
 
         // Assert
         expect($director->role)->toBe(Role::DIRECTOR->value)
-            ->and($accountant->role)->toBe(Role::ACCOUNTANT->value)
+            ->and($cashier->role)->toBe(Role::CASHIER->value)
             ->and($user->role)->toBe(Role::USER->value);
     });
 
@@ -192,7 +192,7 @@ describe('User Model', function () {
         $roles = [
             Role::USER,
             Role::DIRECTOR,
-            Role::ACCOUNTANT,
+            Role::CASHIER,
         ];
 
         foreach ($roles as $role) {

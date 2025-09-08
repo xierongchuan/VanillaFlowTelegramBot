@@ -252,23 +252,23 @@ describe('ExpenseRequest Model', function () {
             ->and($directorFromRequest->role)->toBe(Role::DIRECTOR->value);
     });
 
-    it('has accountant relationship', function () {
+    it('has cashier relationship', function () {
         // Arrange
-        $accountant = User::factory()->create(['role' => Role::ACCOUNTANT->value]);
+        $cashier = User::factory()->create(['role' => Role::CASHIER->value]);
         $user = User::factory()->create();
         $expenseRequest = ExpenseRequest::factory()->create([
             'requester_id' => $user->id,
-            'accountant_id' => $accountant->id,
+            'cashier_id' => $cashier->id,
         ]);
 
         // Act
-        $accountantFromRequest = $expenseRequest->accountant;
+        $cashierFromRequest = $expenseRequest->cashier;
 
         // Assert
-        expect($accountantFromRequest)
+        expect($cashierFromRequest)
             ->toBeInstanceOf(User::class)
-            ->and($accountantFromRequest->id)->toBe($accountant->id)
-            ->and($accountantFromRequest->role)->toBe(Role::ACCOUNTANT->value);
+            ->and($cashierFromRequest->id)->toBe($cashier->id)
+            ->and($cashierFromRequest->role)->toBe(Role::CASHIER->value);
     });
 
     it('has approvals relationship', function () {
@@ -299,18 +299,18 @@ describe('ExpenseRequest Model', function () {
             ->and($approvals->first()->action)->toBe('approved');
     });
 
-    it('handles nullable director and accountant relationships', function () {
+    it('handles nullable director and cashier relationships', function () {
         // Arrange
         $user = User::factory()->create();
         $expenseRequest = ExpenseRequest::factory()->create([
             'requester_id' => $user->id,
             'director_id' => null,
-            'accountant_id' => null,
+            'cashier_id' => null,
         ]);
 
         // Act & Assert
         expect($expenseRequest->director)->toBeNull()
-            ->and($expenseRequest->accountant)->toBeNull();
+            ->and($expenseRequest->cashier)->toBeNull();
     });
 
     it('validates amount constraints', function () {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Bot\Conversations\Accountant;
+namespace App\Bot\Conversations\Cashier;
 
 use App\Bot\Abstracts\BaseConversationHandler;
 use App\Enums\ExpenseStatus;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 use SergiX44\Nutgram\Nutgram;
 
 /**
- * Conversation for accountants to issue a different amount than approved.
+ * Conversation for cashiers to issue a different amount than approved.
  * Follows SOLID principles and uses service locator pattern.
  */
 class IssueDifferentAmountConversation extends BaseConversationHandler
@@ -88,13 +88,13 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
             }
 
             $this->newAmount = $validation['value'];
-            $accountant = $this->getAuthenticatedUser();
+            $cashier = $this->getAuthenticatedUser();
 
             // Issue expense with different amount using custom logic
             $result = $this->issueExpenseWithDifferentAmount(
                 $bot,
                 $this->requestId,
-                $accountant,
+                $cashier,
                 $this->newAmount
             );
 
@@ -121,10 +121,10 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
     /**
      * Custom logic to issue expense with different amount.
      */
-    private function issueExpenseWithDifferentAmount(Nutgram $bot, int $requestId, $accountant, float $newAmount): array
+    private function issueExpenseWithDifferentAmount(Nutgram $bot, int $requestId, $cashier, float $newAmount): array
     {
         try {
-            DB::transaction(function () use ($requestId, $accountant, $newAmount) {
+            DB::transaction(function () use ($requestId, $cashier, $newAmount) {
                 $request = ExpenseRequest::where('id', $requestId)
                     ->lockForUpdate()
                     ->firstOrFail();
@@ -136,14 +136,14 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
                 $originalAmount = $request->amount;
 
                 // Update request with new issued amount and add comment about the difference
-                $comment = "Выдано бухгалтером. Подтвержденная сумма: {$originalAmount} {$request->currency}, " .
+                $comment = "Выдано кассиром. Подтвержденная сумма: {$originalAmount} {$request->currency}, " .
                     "выдана: {$newAmount} {$request->currency}";
 
                 // Create approval record with different amount info
                 ExpenseApproval::create([
                     'expense_request_id' => $request->id,
-                    'actor_id' => $accountant->id,
-                    'actor_role' => Role::ACCOUNTANT->value,
+                    'actor_id' => $cashier->id,
+                    'actor_role' => Role::CASHIER->value,
                     'action' => ExpenseStatus::ISSUED->value,
                     'comment' => $comment,
                     'created_at' => now(),
@@ -152,7 +152,7 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
                 // Update request - save the issued amount in the new issued_amount field
                 $request->update([
                     'status' => ExpenseStatus::ISSUED->value,
-                    'accountant_id' => $accountant->id,
+                    'cashier_id' => $cashier->id,
                     'issued_at' => now(),
                     'issued_amount' => $newAmount, // Save the different amount to issued_amount field
                     'updated_at' => now(),
@@ -162,7 +162,7 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
                 AuditLog::create([
                     'table_name' => 'expense_requests',
                     'record_id' => $request->id,
-                    'actor_id' => $accountant->id,
+                    'actor_id' => $cashier->id,
                     'action' => ExpenseStatus::ISSUED->value,
                     'payload' => [
                         'original_amount' => $originalAmount,
@@ -187,7 +187,7 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
                 );
             }
 
-            Log::info("Заявка #{$requestId} выдана бухгалтером {$accountant->id} с измененной суммой: {$newAmount}");
+            Log::info("Заявка #{$requestId} выдана кассиром {$cashier->id} с измененной суммой: {$newAmount}");
 
             return [
                 'success' => true,
@@ -195,7 +195,7 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
             ];
         } catch (\Throwable $e) {
             Log::error("Ошибка при выдаче заявки #{$requestId} с измененной суммой", [
-                'accountant_id' => $accountant->id,
+                'cashier_id' => $cashier->id,
                 'new_amount' => $newAmount,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

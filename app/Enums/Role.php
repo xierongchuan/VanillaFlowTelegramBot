@@ -7,7 +7,7 @@ namespace App\Enums;
 enum Role: string
 {
     case USER   = 'user';
-    case ACCOUNTANT  = 'accountant';
+    case CASHIER  = 'cashier';
     case DIRECTOR  = 'director';
 
     /** Читабельная метка (Ru) */
@@ -15,7 +15,7 @@ enum Role: string
     {
         return match ($this) {
             self::USER  => 'Пользователь',
-            self::ACCOUNTANT => 'Бухгалтер',
+            self::CASHIER => 'Кассир',
             self::DIRECTOR => 'Директор',
         };
     }

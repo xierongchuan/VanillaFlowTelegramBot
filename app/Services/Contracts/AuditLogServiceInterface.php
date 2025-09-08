@@ -80,13 +80,13 @@ interface AuditLogServiceInterface
      * Log expense issuance.
      *
      * @param int $requestId The expense request ID
-     * @param int $accountantId The ID of the accountant
+     * @param int $cashierId The ID of the cashier
      * @param float|null $issuedAmount The amount issued (if different from requested)
      * @return void
      */
     public function logExpenseIssued(
         int $requestId,
-        int $accountantId,
+        int $cashierId,
         ?float $issuedAmount = null
     ): void;
 }

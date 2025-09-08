@@ -19,7 +19,7 @@ describe('Services Integration', function () {
     it('integrates all services for complete expense workflow', function () {
         // Arrange
         $scenario = createExpenseWorkflowScenario();
-        extract($scenario); // $requester, $director, $accountant
+        extract($scenario); // $requester, $director, $cashier
 
         $mockBot = mockTelegramBot();
 
@@ -82,13 +82,13 @@ describe('Services Integration', function () {
             ->and($request->director_id)->toBe($director->id)
             ->and($request->approved_at)->not->toBeNull();
 
-        // Act 3: Accountant issues payment
-        authenticateUser($accountant);
+        // Act 3: Cashier issues payment
+        authenticateUser($cashier);
 
         $issuanceResult = $approvalService->issueExpense(
             $mockBot,
             $requestId,
-            $accountant
+            $cashier
         );
 
         // Assert 3: Request issued successfully
@@ -96,7 +96,7 @@ describe('Services Integration', function () {
 
         $request = $request->fresh();
         expect($request->status)->toBe(ExpenseStatus::ISSUED->value)
-            ->and($request->accountant_id)->toBe($accountant->id)
+            ->and($request->cashier_id)->toBe($cashier->id)
             ->and($request->issued_at)->not->toBeNull();
 
         // Assert 4: Complete audit trail exists
@@ -164,19 +164,19 @@ describe('Services Integration', function () {
             ->and($director2->role)->toBe(Role::DIRECTOR->value)
             ->and($director2->company_id)->toBe(2);
 
-        // Act & Assert: Find accountants
-        $accountant1 = $userFinderService->findAccountantForCompany(1);
-        $accountant2 = $userFinderService->findAccountantForCompany(2);
+        // Act & Assert: Find cashiers
+        $cashier1 = $userFinderService->findCashierForCompany(1);
+        $cashier2 = $userFinderService->findCashierForCompany(2);
 
-        expect($accountant1)
+        expect($cashier1)
             ->not->toBeNull()
-            ->and($accountant1->role)->toBe(Role::ACCOUNTANT->value)
-            ->and($accountant1->company_id)->toBe(1);
+            ->and($cashier1->role)->toBe(Role::CASHIER->value)
+            ->and($cashier1->company_id)->toBe(1);
 
-        expect($accountant2)
+        expect($cashier2)
             ->not->toBeNull()
-            ->and($accountant2->role)->toBe(Role::ACCOUNTANT->value)
-            ->and($accountant2->company_id)->toBe(2);
+            ->and($cashier2->role)->toBe(Role::CASHIER->value)
+            ->and($cashier2->company_id)->toBe(2);
 
         // Test no director found for non-existent company
         $noDirector = $userFinderService->findDirectorForCompany(999);

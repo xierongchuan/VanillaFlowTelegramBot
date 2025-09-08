@@ -119,10 +119,10 @@ class AuditLogService implements AuditLogServiceInterface
      */
     public function logExpenseIssued(
         int $requestId,
-        int $accountantId,
+        int $cashierId,
         ?float $issuedAmount = null
     ): void {
-        $this->logExpenseAction($requestId, $accountantId, 'issued', ['issued_amount' => $issuedAmount]);
+        $this->logExpenseAction($requestId, $cashierId, 'issued', ['issued_amount' => $issuedAmount]);
     }
 
     /**

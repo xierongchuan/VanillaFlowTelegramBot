@@ -39,13 +39,13 @@ class ExpenseIssuedCallback extends BaseCallbackHandler
     {
         $bot->answerCallbackQuery();
 
-        $accountant = $this->validateUser($bot);
+        $cashier = $this->validateUser($bot);
         $requestId = (int) $id;
 
         $result = $this->getApprovalService()->issueExpense(
             $bot,
             $requestId,
-            $accountant
+            $cashier
         );
 
         if (!$result['success']) {

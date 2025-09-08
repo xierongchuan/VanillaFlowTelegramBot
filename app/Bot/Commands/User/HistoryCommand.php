@@ -24,7 +24,7 @@ class HistoryCommand extends BaseCommandHandler
      */
     protected function execute(Nutgram $bot, User $user): void
     {
-        $requests = ExpenseRequest::with(['director', 'accountant'])
+        $requests = ExpenseRequest::with(['director', 'cashier'])
             ->where('requester_id', $user->id)
             ->orderBy('created_at', 'asc')
             ->limit(20) // Limit to last 20 requests
@@ -59,8 +59,8 @@ class HistoryCommand extends BaseCommandHandler
                 $message .= "👔 Директор: {$request->director->full_name}\n";
             }
 
-            if ($request->accountant) {
-                $message .= "💼 Бухгалтер: {$request->accountant->full_name}\n";
+            if ($request->cashier) {
+                $message .= "💼 Кассир: {$request->cashier->full_name}\n";
             }
 
             // Add timestamps for processed requests

@@ -41,7 +41,7 @@ class ExpenseRequestController extends Controller
 
             $expenses = ExpenseRequest::where('company_id', $companyId)
                 ->where('status', ExpenseStatus::APPROVED->value)
-                ->with(['requester:id,full_name', 'accountant:id,full_name'])
+                ->with(['requester:id,full_name', 'cashier:id,full_name'])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
@@ -155,7 +155,7 @@ class ExpenseRequestController extends Controller
 
             $expenses = ExpenseRequest::where('company_id', $companyId)
                 ->where('status', ExpenseStatus::ISSUED->value)
-                ->with(['requester:id,full_name', 'accountant:id,full_name'])
+                ->with(['requester:id,full_name', 'cashier:id,full_name'])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 

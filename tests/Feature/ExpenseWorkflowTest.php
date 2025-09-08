@@ -50,11 +50,11 @@ describe('Expense Request Workflow', function () {
                 'full_name' => 'Jane Director',
             ]);
 
-            $accountant = User::factory()->create([
-                'role' => Role::ACCOUNTANT->value,
+            $cashier = User::factory()->create([
+                'role' => Role::CASHIER->value,
                 'company_id' => 1,
                 'telegram_id' => 555666777,
-                'full_name' => 'Bob Accountant',
+                'full_name' => 'Bob Cashier',
             ]);
 
             // Mock bot messages for director notification
@@ -93,25 +93,25 @@ describe('Expense Request Workflow', function () {
                 'approved_at' => now(),
             ]);
 
-            // Mock accountant notification
+            // Mock cashier notification
             $this->mockBot->shouldReceive('sendMessage')
                 ->once()
                 ->andReturn(null);
 
-            // Act - Step 3: Notify accountant (simulate notification service)
-            $this->notificationService->notifyAccountantApproved(
+            // Act - Step 3: Notify cashier (simulate notification service)
+            $this->notificationService->notifyCashierApproved(
                 $this->mockBot,
-                $accountant,
+                $cashier,
                 $expenseRequest->fresh()
             );
 
             // Assert - Verify approval status
             expect($expenseRequest->fresh()->status)->toBe(ExpenseStatus::APPROVED->value);
 
-            // Act - Step 4: Accountant issues payment
+            // Act - Step 4: Cashier issues payment
             $expenseRequest->update([
                 'status' => ExpenseStatus::ISSUED->value,
-                'accountant_id' => $accountant->id,
+                'cashier_id' => $cashier->id,
                 'issued_at' => now(),
             ]);
 

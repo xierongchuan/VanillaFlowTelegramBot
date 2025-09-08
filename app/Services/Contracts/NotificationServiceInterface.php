@@ -46,17 +46,17 @@ interface NotificationServiceInterface
     ): bool;
 
     /**
-     * Notify accountant about approved expense request.
+     * Notify cashier about approved expense request.
      *
      * @param Nutgram $bot Bot instance
-     * @param User $accountant Accountant to notify
+     * @param User $cashier Cashier to notify
      * @param ExpenseRequest $request The expense request
      * @param string|null $directorComment Director's comment
      * @return bool Success status
      */
-    public function notifyAccountantApproved(
+    public function notifyCashierApproved(
         Nutgram $bot,
-        User $accountant,
+        User $cashier,
         ExpenseRequest $request,
         ?string $directorComment = null
     ): bool;

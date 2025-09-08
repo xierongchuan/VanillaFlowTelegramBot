@@ -34,14 +34,14 @@ function createExpenseWorkflowScenario(): array
         'telegram_id' => 987654321,
     ]);
 
-    $accountant = User::factory()->create([
-        'role' => Role::ACCOUNTANT->value,
+    $cashier = User::factory()->create([
+        'role' => Role::CASHIER->value,
         'company_id' => 1,
-        'full_name' => 'Bob Accountant',
+        'full_name' => 'Bob Cashier',
         'telegram_id' => 555666777,
     ]);
 
-    return compact('requester', 'director', 'accountant');
+    return compact('requester', 'director', 'cashier');
 }
 
 /**
@@ -60,10 +60,10 @@ function createMultiCompanyScenario(): array
             'company_id' => 1,
             'full_name' => 'Director Company 1',
         ]),
-        'accountant' => User::factory()->create([
-            'role' => Role::ACCOUNTANT->value,
+        'cashier' => User::factory()->create([
+            'role' => Role::CASHIER->value,
             'company_id' => 1,
-            'full_name' => 'Accountant Company 1',
+            'full_name' => 'Cashier Company 1',
         ]),
     ];
 
@@ -78,10 +78,10 @@ function createMultiCompanyScenario(): array
             'company_id' => 2,
             'full_name' => 'Director Company 2',
         ]),
-        'accountant' => User::factory()->create([
-            'role' => Role::ACCOUNTANT->value,
+        'cashier' => User::factory()->create([
+            'role' => Role::CASHIER->value,
             'company_id' => 2,
-            'full_name' => 'Accountant Company 2',
+            'full_name' => 'Cashier Company 2',
         ]),
     ];
 
@@ -222,7 +222,7 @@ function getStatusTransitionTestCases(): array
         'approved_to_issued' => [
             'from' => ExpenseStatus::APPROVED->value,
             'to' => ExpenseStatus::ISSUED->value,
-            'actor_role' => Role::ACCOUNTANT->value,
+            'actor_role' => Role::CASHIER->value,
         ],
     ];
 }

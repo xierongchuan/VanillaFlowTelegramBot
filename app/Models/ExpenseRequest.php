@@ -28,7 +28,7 @@ class ExpenseRequest extends Model
         'currency',
         'status',
         'director_id',
-        'accountant_id',
+        'cashier_id',
         'director_comment',
         'company_id',
         'approved_at',
@@ -54,9 +54,9 @@ class ExpenseRequest extends Model
         return $this->belongsTo(User::class, 'director_id');
     }
 
-    public function accountant()
+    public function cashier()
     {
-        return $this->belongsTo(User::class, 'accountant_id');
+        return $this->belongsTo(User::class, 'cashier_id');
     }
 
     public function approvals()

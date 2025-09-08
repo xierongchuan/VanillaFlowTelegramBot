@@ -25,11 +25,11 @@ class UserFinderService implements UserFinderServiceInterface
     }
 
     /**
-     * Find accountant for a company.
+     * Find cashier for a company.
      */
-    public function findAccountantForCompany(int $companyId): ?User
+    public function findCashierForCompany(int $companyId): ?User
     {
-        return $this->findUsersByRoleForCompany($companyId, Role::ACCOUNTANT)->first();
+        return $this->findUsersByRoleForCompany($companyId, Role::CASHIER)->first();
     }
 
     /**
@@ -59,10 +59,10 @@ class UserFinderService implements UserFinderServiceInterface
     }
 
     /**
-     * Find all accountants for a company.
+     * Find all cashiers for a company.
      */
-    public function findAccountantsForCompany(int $companyId): Collection
+    public function findCashiersForCompany(int $companyId): Collection
     {
-        return $this->findUsersByRoleForCompany($companyId, Role::ACCOUNTANT);
+        return $this->findUsersByRoleForCompany($companyId, Role::CASHIER);
     }
 }

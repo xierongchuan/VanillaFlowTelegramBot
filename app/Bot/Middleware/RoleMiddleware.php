@@ -13,7 +13,7 @@ class RoleMiddleware
     protected array $allowed;
 
     /**
-     * @param array<string> $allowed allowed role names, e.g. ['user','manager','accountant']
+     * @param array<string> $allowed allowed role names, e.g. ['user','manager','cashier']
      */
     public function __construct(array $allowed = [])
     {

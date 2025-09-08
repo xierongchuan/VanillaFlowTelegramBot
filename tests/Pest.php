@@ -46,7 +46,7 @@ expect()->extend('toBeValidExpenseStatus', function () {
 });
 
 expect()->extend('toBeValidRole', function () {
-    $validRoles = ['user', 'director', 'accountant'];
+    $validRoles = ['user', 'director', 'cashier'];
     return $this->toBeIn($validRoles);
 });
 

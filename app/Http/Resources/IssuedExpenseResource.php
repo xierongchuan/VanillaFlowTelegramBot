@@ -22,7 +22,7 @@ class IssuedExpenseResource extends JsonResource
             'requester_name' => $this->requester->full_name ?? 'Unknown',
             'description' => $this->description ?? '',
             'amount' => $this->amount,
-            'issuer_name' => $this->accountant->full_name ?? 'Unknown',
+            'issuer_name' => $this->cashier->full_name ?? 'Unknown',
             'issued_amount' => $this->issued_amount,
         ];
     }

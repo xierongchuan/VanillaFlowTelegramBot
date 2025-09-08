@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Bot\Commands\Accountant;
+namespace App\Bot\Commands\Cashier;
 
 use App\Bot\Abstracts\BaseCommandHandler;
 use App\Enums\ExpenseStatus;
@@ -11,16 +11,16 @@ use SergiX44\Nutgram\Nutgram;
 use App\Models\User;
 
 /**
- * Command to display pending expenses for accountants (approved but not issued).
+ * Command to display pending expenses for cashiers (approved but not issued).
  * Refactored to use base class and follow SOLID principles.
  */
 class PendingExpensesCommand extends BaseCommandHandler
 {
-    protected string $command = 'pending_expenses_accountant';
+    protected string $command = 'pending_expenses_cashier';
     protected ?string $description = 'Show approved expense requests waiting for issuance';
 
     /**
-     * Execute the pending expenses command logic for accountants.
+     * Execute the pending expenses command logic for cashiers.
      */
     protected function execute(Nutgram $bot, User $user): void
     {
