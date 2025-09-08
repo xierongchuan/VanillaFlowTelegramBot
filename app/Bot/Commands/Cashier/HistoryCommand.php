@@ -63,14 +63,14 @@ class HistoryCommand extends BaseCommandHandler
             //     $message .= "👔 Директор: {$request->director->full_name}\n";
             // }
 
-            // if ($request->cashier) {
-            //     $cashierName = $request->cashier->full_name;
-            //     // Highlight if current user processed it
-            //     if ($request->cashier_id === $user->id) {
-            //         $cashierName = "💼 *{$cashierName}* (Вы)";
-            //     }
-            //     $message .= "💼 Кассир: {$cashierName}\n";
-            // }
+            if ($request->cashier) {
+                $cashierName = $request->cashier->full_name;
+                // Highlight if current user processed it
+                if ($request->cashier_id === $user->id) {
+                    $cashierName = "💼 *{$cashierName}* (Вы)";
+                }
+                $message .= "💼 Кассир: {$cashierName}\n";
+            }
 
             // Add timestamps for processed requests
             if ($request->approved_at) {
