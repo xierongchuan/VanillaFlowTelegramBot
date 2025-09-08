@@ -168,7 +168,7 @@ class TelegramNotificationService implements NotificationServiceInterface
         $message = "Ваша заявка #{$request->id} {$statusText}";
 
         if ($status === ExpenseStatus::APPROVED->value) {
-            $message .= " директором.\nОжидайте выдачи от бухгалтера.";
+            $message .= " директором.\nОжидайте выдачи от кассира.";
         } elseif ($status === ExpenseStatus::DECLINED->value) {
             $message .= sprintf(
                 " директором.\nСумма: %s %s\nОписание: %s",
@@ -177,7 +177,7 @@ class TelegramNotificationService implements NotificationServiceInterface
                 $request->description ?: '-'
             );
         } elseif ($status === ExpenseStatus::ISSUED->value) {
-            $message .= " бухгалтером.\nВы можете получить средства у кассира.";
+            $message .= " кассиром.\nВы можете получить средства у кассира.";
         }
 
         if ($comment && $comment !== '-') {

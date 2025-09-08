@@ -19,7 +19,7 @@ enum ExpenseStatus: string
             self::PENDING  => 'Ожидает руководителя',
             self::APPROVED => 'Одобрено руководителем',
             self::DECLINED => 'Отклонено руководителем',
-            self::ISSUED           => 'Выдано (бухгалтер)',
+            self::ISSUED           => 'Выдано (кассиром)',
             self::CANCELLED        => 'Отменено',
         };
     }
