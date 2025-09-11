@@ -72,9 +72,11 @@ describe('Expense Request API', function () {
         // Get the response data to verify order and values
         $responseData = $response->json('data');
 
-        // Check that both expenses are returned
-        $amounts = array_column($responseData, 'amount');
-        expect($amounts)->toContain(100.5);
+        // The issued expense should be first (most recent)
+        expect($responseData[0]['amount'])->toBe(200);
+        expect($responseData[0]['status'])->toBe('issued');
+        expect($responseData[1]['amount'])->toBe(100.5);
+        expect($responseData[1]['status'])->toBe('approved');
     });
 
     it('can get declined expenses for a company', function () {
@@ -167,6 +169,48 @@ describe('Expense Request API', function () {
         $responseData = $response->json('data');
         expect($responseData[0]['amount'])->toBe(300);
         expect($responseData[0]['issued_amount'])->toBe(250);
+    });
+
+    it('can get pending expenses for a company', function () {
+        $requester = User::factory()->role(Role::USER)->company(1)->create();
+        $authUser = User::factory()->role(Role::DIRECTOR)->company(1)->create();
+
+        $expense = ExpenseRequest::factory()
+            ->company(1)
+            ->pending()
+            ->amount(75.50)
+            ->create([
+                'requester_id' => $requester->id,
+                'description' => 'Pending expense',
+            ]);
+
+        $response = $this->actingAs($authUser, 'sanctum')
+            ->getJson('/api/v1/companies/1/expenses/pending');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    '*' => [
+                        'id',
+                        'date',
+                        'requester_name',
+                        'description',
+                        'amount',
+                        'status'
+                    ]
+                ],
+                'pagination' => [
+                    'current_page',
+                    'last_page',
+                    'per_page',
+                    'total',
+                    'from',
+                    'to'
+                ]
+            ])
+            ->assertJsonPath('data.0.amount', 75.50)
+            ->assertJsonPath('data.0.status', 'pending');
     });
 
     it('can handle pagination parameters', function () {

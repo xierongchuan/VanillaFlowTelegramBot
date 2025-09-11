@@ -55,5 +55,9 @@ Route::prefix('v1')->group(function () {
                 '/companies/{companyId}/expenses/issued',
                 [ExpenseRequestController::class, 'getIssuedRequests']
             );
+            Route::get(
+                '/companies/{companyId}/expenses/pending',
+                [ExpenseRequestController::class, 'getPendingRequests']
+            );
         });
 });
