@@ -3,28 +3,28 @@ info:
   title: TaskMate VanillaFlow Telegram Bot API
   description: |
     API documentation for the TaskMate VanillaFlow Telegram Bot application.
-
+    
     This API provides endpoints for user management, authentication, and expense request handling.
-
+    
     ## Authentication
-
+    
     Most endpoints require authentication using Laravel Sanctum tokens. To authenticate, include the Authorization header with your Bearer token:
-
+    
     ```
     Authorization: Bearer YOUR_ACCESS_TOKEN
     ```
-
+    
     ## Error Responses
-
+    
     The API uses standard HTTP status codes to indicate the success or failure of requests. Error responses follow this format:
-
+    
     ```json
     {
       "success": false,
       "message": "Error description"
     }
     ```
-
+    
     For validation errors (422):
     ```json
     {
