@@ -24,19 +24,19 @@ $bot->onCommand(
     StartConversationDispatcher::class
 );
 
-// Users Middleware
+// Users & Cashiers Middleware
 $bot->onText(
     '📝 Создать заявку',
     RequestExpenseConversation::class
 )
-->middleware(new RoleMiddleware([Role::USER->value]))
+->middleware(new RoleMiddleware([Role::USER->value, Role::CASHIER->value]))
 ->middleware(AuthUser::class);
 
 $bot->onText(
     '📄 Мои заявки',
     \App\Bot\Commands\User\HistoryCommand::class
 )
-->middleware(new RoleMiddleware([Role::USER->value]))
+->middleware(new RoleMiddleware([Role::USER->value, Role::CASHIER->value]))
 ->middleware(AuthUser::class);
 
 // Director Commands

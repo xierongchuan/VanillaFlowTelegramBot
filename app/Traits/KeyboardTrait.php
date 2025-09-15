@@ -51,6 +51,10 @@ trait KeyboardTrait
     {
         return ReplyKeyboardMarkup::make(resize_keyboard: true)
             ->addRow(
+                KeyboardButton::make('📝 Создать заявку'),
+                KeyboardButton::make('📄 Мои заявки')
+            )
+            ->addRow(
                 KeyboardButton::make('💰 Ожидающие выдачи'),
                 KeyboardButton::make('💼 История операций')
             );

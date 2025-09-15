@@ -8,10 +8,11 @@ use App\Bot\Abstracts\BaseCommandHandler;
 use App\Models\User;
 use App\Models\ExpenseRequest;
 use App\Enums\ExpenseStatus;
+use App\Enums\Role;
 use SergiX44\Nutgram\Nutgram;
 
 /**
- * History command for users.
+ * History command for users and cashiers.
  * Shows the user's expense request history in a concise format.
  */
 class HistoryCommand extends BaseCommandHandler
@@ -20,7 +21,20 @@ class HistoryCommand extends BaseCommandHandler
     protected ?string $description = 'Show expense request history';
 
     /**
-     * Execute the history command logic for users.
+     * Get appropriate keyboard based on user role.
+     */
+    private function getRoleKeyboard(User $user)
+    {
+        $role = Role::tryFromString($user->role);
+        return match ($role) {
+            Role::USER => static::userMenu(),
+            Role::CASHIER => static::cashierMenu(),
+            default => static::userMenu()
+        };
+    }
+
+    /**
+     * Execute the history command logic for users and cashiers.
      */
     protected function execute(Nutgram $bot, User $user): void
     {
@@ -33,7 +47,7 @@ class HistoryCommand extends BaseCommandHandler
         if ($requests->isEmpty()) {
             $bot->sendMessage(
                 "📋 У вас пока нет заявок.\n\nСоздайте первую заявку с помощью кнопки '📝 Создать заявку'",
-                reply_markup: static::userMenu()
+                reply_markup: $this->getRoleKeyboard($user)
             );
             return;
         }
@@ -86,7 +100,7 @@ class HistoryCommand extends BaseCommandHandler
         $bot->sendMessage(
             $message,
             parse_mode: 'Markdown',
-            reply_markup: static::userMenu()
+            reply_markup: $this->getRoleKeyboard($user)
         );
     }
 }

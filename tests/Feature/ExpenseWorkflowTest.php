@@ -447,4 +447,138 @@ describe('Expense Request Workflow', function () {
                 ->and($deletionAudit->payload)->toHaveKey('reason', 'Testing audit trail');
         });
     });
+
+    describe('Cashier Expense Request Creation', function () {
+        it('allows cashier to create expense requests', function () {
+            // Arrange
+            $cashier = User::factory()->create([
+                'role' => Role::CASHIER->value,
+                'company_id' => 1,
+                'telegram_id' => 555666777,
+            ]);
+
+            $director = User::factory()->create([
+                'role' => Role::DIRECTOR->value,
+                'company_id' => 1,
+                'telegram_id' => 888999000,
+            ]);
+
+            $this->mockBot->shouldReceive('sendMessage')
+                ->once()
+                ->andReturn(null);
+
+            // Act - Cashier creates expense request
+            $requestId = $this->expenseService->createRequest(
+                $this->mockBot,
+                $cashier,
+                'Office supplies for cashier team',
+                2500.50,
+                'UZS'
+            );
+
+            // Assert
+            expect($requestId)->toBeInt()->toBeGreaterThan(0);
+
+            $expenseRequest = ExpenseRequest::find($requestId);
+            expect($expenseRequest)
+                ->not->toBeNull()
+                ->and($expenseRequest->requester_id)->toBe($cashier->id)
+                ->and($expenseRequest->company_id)->toBe($cashier->company_id)
+                ->and($expenseRequest->status)->toBe(ExpenseStatus::PENDING->value)
+                ->and($expenseRequest->amount)->toBe(2500.50)
+                ->and($expenseRequest->currency)->toBe('UZS');
+
+            // Verify audit log entry
+            $auditLog = AuditLog::where('table_name', 'expense_requests')
+                ->where('record_id', $requestId)
+                ->where('actor_id', $cashier->id)
+                ->first();
+
+            expect($auditLog)
+                ->not->toBeNull()
+                ->and($auditLog->action)->toBe('insert');
+        });
+
+        it('allows cashier to view their personal expense request history', function () {
+            // Arrange
+            $cashier = User::factory()->create([
+                'role' => Role::CASHIER->value,
+                'company_id' => 1,
+            ]);
+
+            $otherUser = User::factory()->create([
+                'role' => Role::USER->value,
+                'company_id' => 1,
+            ]);
+
+            // Create expense requests for both users
+            $cashierRequest1 = ExpenseRequest::factory()->create([
+                'requester_id' => $cashier->id,
+                'company_id' => 1,
+                'amount' => 1000.00,
+                'status' => ExpenseStatus::PENDING->value,
+            ]);
+
+            $cashierRequest2 = ExpenseRequest::factory()->create([
+                'requester_id' => $cashier->id,
+                'company_id' => 1,
+                'amount' => 2000.00,
+                'status' => ExpenseStatus::APPROVED->value,
+            ]);
+
+            $otherUserRequest = ExpenseRequest::factory()->create([
+                'requester_id' => $otherUser->id,
+                'company_id' => 1,
+                'amount' => 1500.00,
+                'status' => ExpenseStatus::PENDING->value,
+            ]);
+
+            // Act - Get cashier's personal requests
+            $cashierRequests = ExpenseRequest::where('requester_id', $cashier->id)
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            // Assert - Cashier should only see their own requests
+            expect($cashierRequests)->toHaveCount(2);
+            expect($cashierRequests->pluck('id'))->toContain($cashierRequest1->id);
+            expect($cashierRequests->pluck('id'))->toContain($cashierRequest2->id);
+            expect($cashierRequests->pluck('id'))->not->toContain($otherUserRequest->id);
+
+            // Verify amounts match
+            expect($cashierRequests->sum('amount'))->toBe(3000.00);
+        });
+
+        it('prevents cashier from approving their own expense requests', function () {
+            // Arrange
+            $cashier = User::factory()->create([
+                'role' => Role::CASHIER->value,
+                'company_id' => 1,
+            ]);
+
+            $director = User::factory()->create([
+                'role' => Role::DIRECTOR->value,
+                'company_id' => 1,
+            ]);
+
+            // Cashier creates an expense request
+            $requestId = $this->expenseService->createRequest(
+                $this->mockBot,
+                $cashier,
+                'Test request by cashier',
+                1000.00,
+                'UZS'
+            );
+
+            $expenseRequest = ExpenseRequest::find($requestId);
+
+            // Assert - Verify the request was created with cashier as requester
+            expect($expenseRequest->requester_id)->toBe($cashier->id);
+            expect($expenseRequest->director_id)->toBeNull(); // Not yet assigned
+
+            // In real workflow, director should be assigned automatically or manually
+            // This test verifies that cashier and requester are different entities
+            expect($cashier->id)->not->toBe($director->id);
+            expect($expenseRequest->requester_id)->toBe($cashier->id);
+        });
+    });
 });

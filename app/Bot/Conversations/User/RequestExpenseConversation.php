@@ -7,11 +7,14 @@ namespace App\Bot\Conversations\User;
 use App\Bot\Abstracts\BaseConversation;
 use App\Services\Contracts\ExpenseServiceInterface;
 use App\Services\Contracts\ValidationServiceInterface;
+use App\Enums\Role;
+use App\Models\User;
 use SergiX44\Nutgram\Nutgram;
 
 /**
  * Conversation for requesting expenses.
  * Refactored to use base class and follow SOLID principles.
+ * Now supports both USER and CASHIER roles.
  */
 
 class RequestExpenseConversation extends BaseConversation
@@ -105,7 +108,7 @@ class RequestExpenseConversation extends BaseConversation
 просим немедленно сообщить администратору
 и подождать до починки неполадки в системе!
 MSG,
-                    reply_markup: static::userMenu()
+                    reply_markup: $this->getDefaultKeyboard()
                 );
                 $this->end();
                 return;
@@ -123,10 +126,30 @@ MSG,
     }
 
     /**
-     * Get default keyboard for user.
+     * Get appropriate keyboard based on user role.
      */
     protected function getDefaultKeyboard()
     {
-        return static::userMenu();
+        $user = $this->validateUser();
+        $role = Role::tryFromString($user->role);
+        return match ($role) {
+            Role::USER => static::userMenu(),
+            Role::CASHIER => static::cashierMenu(),
+            default => static::userMenu()
+        };
+    }
+
+    /**
+     * Validate that user is authenticated.
+     */
+    private function validateUser(): User
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            throw new \RuntimeException('User not authenticated');
+        }
+
+        return $user;
     }
 }
