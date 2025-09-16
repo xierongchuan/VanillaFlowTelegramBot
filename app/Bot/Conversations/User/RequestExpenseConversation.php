@@ -115,7 +115,13 @@ MSG,
             }
 
             $bot->sendMessage(
-                "Готово! — Создана заявка #$result\nНа сумму: " . number_format($this->amount, 2, '.', ' ')
+                "Готово! — Создана заявка #$result\nНа сумму: "
+                . number_format(
+                    $this->amount,
+                    2,
+                    '.',
+                    ' '
+                )
                 . " UZS",
                 reply_markup: $this->getDefaultKeyboard()
             );
