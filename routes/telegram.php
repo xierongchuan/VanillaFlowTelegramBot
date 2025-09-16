@@ -8,9 +8,9 @@ use App\Bot\Callbacks\ExpenseConfirmCallback;
 use App\Bot\Callbacks\ExpenseDeclineCallback;
 use App\Bot\Commands\Director\PendingExpensesCommand;
 use App\Enums\Role;
-use SergiX44\Nutgram\Nutgram;
 use App\Bot\Middleware\AuthUser;
 use App\Bot\Middleware\RoleMiddleware;
+use App\Bot\Middleware\VCRMUserSyncMiddleware;
 use App\Bot\Dispatchers\StartConversationDispatcher;
 use App\Bot\Conversations\User\RequestExpenseConversation;
 use App\Bot\Conversations\Director\ConfirmWithCommentConversation;
@@ -22,7 +22,8 @@ use App\Bot\Conversations\Director\ConfirmWithCommentConversation;
 $bot->onCommand(
     'start',
     StartConversationDispatcher::class
-);
+)
+->middleware(VCRMUserSyncMiddleware::class);
 
 // Users & Cashiers Middleware
 $bot->onText(
@@ -30,14 +31,16 @@ $bot->onText(
     RequestExpenseConversation::class
 )
 ->middleware(new RoleMiddleware([Role::USER->value, Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onText(
     '📄 Мои заявки',
     \App\Bot\Commands\User\HistoryCommand::class
 )
 ->middleware(new RoleMiddleware([Role::USER->value, Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 // Director Commands
 $bot->onText(
@@ -45,14 +48,16 @@ $bot->onText(
     PendingExpensesCommand::class
 )
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onText(
     '📋 История заявок',
     \App\Bot\Commands\Director\HistoryCommand::class
 )
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 // Cashier Commands
 $bot->onText(
@@ -60,14 +65,16 @@ $bot->onText(
     \App\Bot\Commands\Cashier\PendingExpensesCommand::class
 )
 ->middleware(new RoleMiddleware([Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onText(
     '💼 История операций',
     \App\Bot\Commands\Cashier\HistoryCommand::class
 )
 ->middleware(new RoleMiddleware([Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 // Director Callbacks
 $bot->onCallbackQueryData(
@@ -75,21 +82,24 @@ $bot->onCallbackQueryData(
     ExpenseConfirmCallback::class
 )
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onCallbackQueryData(
     'expense:decline:{id}',
     ExpenseDeclineCallback::class
 )
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onCallbackQueryData(
     'expense:confirm_with_comment:{id}',
     ConfirmWithCommentConversation::class
 )
 ->middleware(new RoleMiddleware([Role::DIRECTOR->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 // Cashier Callbacks
 $bot->onCallbackQueryData(
@@ -97,18 +107,21 @@ $bot->onCallbackQueryData(
     \App\Bot\Callbacks\ExpenseIssuedCallback::class
 )
 ->middleware(new RoleMiddleware([Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onCallbackQueryData(
     'expense:issued_full:{id}',
     \App\Bot\Callbacks\ExpenseIssuedFullCallback::class
 )
 ->middleware(new RoleMiddleware([Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
 
 $bot->onCallbackQueryData(
     'expense:issued_different:{id}',
     \App\Bot\Conversations\Cashier\IssueDifferentAmountConversation::class
 )
 ->middleware(new RoleMiddleware([Role::CASHIER->value]))
-->middleware(AuthUser::class);
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);

@@ -117,7 +117,7 @@ MSG,
             $bot->sendMessage(
                 "Готово! — Создана заявка #$result\nНа сумму: " . number_format($this->amount, 2, '.', ' ')
                 . " UZS",
-                reply_markup: static::userMenu()
+                reply_markup: $this->getDefaultKeyboard()
             );
             $this->end();
         } catch (\Throwable $e) {
@@ -130,26 +130,11 @@ MSG,
      */
     protected function getDefaultKeyboard()
     {
-        $user = $this->validateUser();
-        $role = Role::tryFromString($user->role);
+        $role = Role::tryFromString(auth()->user()->role);
         return match ($role) {
             Role::USER => static::userMenu(),
             Role::CASHIER => static::cashierMenu(),
             default => static::userMenu()
         };
-    }
-
-    /**
-     * Validate that user is authenticated.
-     */
-    private function validateUser(): User
-    {
-        $user = auth()->user();
-
-        if (!$user) {
-            throw new \RuntimeException('User not authenticated');
-        }
-
-        return $user;
     }
 }
