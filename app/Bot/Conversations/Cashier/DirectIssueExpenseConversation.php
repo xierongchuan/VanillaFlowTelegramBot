@@ -195,104 +195,47 @@ class DirectIssueExpenseConversation extends BaseConversationHandler
                 $this->comment = $text;
             }
 
-            // Confirm the operation
+            // Show confirmation with inline buttons
             $message = sprintf(
                 "Подтвердите операцию:\n" .
                 "Получатель: %s\n" .
                 "Назначение: %s\n" .
                 "Сумма: %s UZS\n" .
-                "Комментарий: %s\n\n" .
-                "Введите /confirm для подтверждения или /cancel для отмены:",
+                "Комментарий: %s",
                 $this->recipientName,
                 $this->description,
                 number_format($this->amount, 2, '.', ' '),
                 $this->comment ?: '-'
             );
 
-            $bot->sendMessage($message);
-            $this->next('handleConfirmation');
+            // Generate unique IDs for callback data
+            $uniqueId = uniqid();
+            $confirmData = "direct_issue:confirm:{$uniqueId}";
+            $cancelData = "direct_issue:cancel:{$uniqueId}";
+
+            // Store conversation data for callback handling
+            $bot->setGlobalData($confirmData, [
+                'conversation' => static::class,
+                'data' => [
+                    'recipientName' => $this->recipientName,
+                    'description' => $this->description,
+                    'amount' => $this->amount,
+                    'comment' => $this->comment
+                ]
+            ]);
+
+            $bot->setGlobalData($cancelData, [
+                'conversation' => static::class
+            ]);
+
+            $inline = static::inlineConfirmDecline($confirmData, $cancelData);
+
+            $bot->sendMessage($message, reply_markup: $inline);
+
+            // End the conversation here since we're waiting for callback
+            $this->end();
         } catch (\Throwable $e) {
             $this->handleError($bot, $e, 'handleComment');
         }
-    }
-
-    /**
-     * Handle confirmation.
-     */
-    public function handleConfirmation(Nutgram $bot): void
-    {
-        try {
-            $text = trim($bot->message()?->text ?? '');
-
-            // Check for cancel command
-            if (strtolower($text) === '/cancel') {
-                $bot->sendMessage('Операция отменена.');
-                $this->end();
-                return;
-            }
-
-            // Check for confirm command
-            if (strtolower($text) !== '/confirm') {
-                $bot->sendMessage('Введите /confirm для подтверждения или /cancel для отмены.');
-                $this->next('handleConfirmation');
-                return;
-            }
-
-            // Execute the direct issuance
-            $cashier = $this->getAuthenticatedUser();
-
-            // Use cashier as requester to avoid foreign key issues
-            // Store real recipient information in the comment
-            $commentWithRecipient = sprintf(
-                "[Для: %s] %s",
-                $this->recipientName,
-                $this->comment
-            );
-
-            $expenseService = $this->getExpenseService();
-            $requestId = $expenseService->createAndIssueRequest(
-                $bot,
-                $cashier, // Use cashier as requester
-                $cashier, // Use cashier as recipient
-                $this->description,
-                $this->amount,
-                'UZS',
-                $commentWithRecipient // Include real recipient in comment
-            );
-
-            if ($requestId !== null) {
-                $message = sprintf(
-                    "✅ Средства выданы без подтверждения директора!\n" .
-                    "Заявка #%d создана и выдана.\n" .
-                    "Получатель: %s\n" .
-                    "Сумма: %s UZS\n" .
-                    "Назначение: %s",
-                    $requestId,
-                    $this->recipientName,
-                    number_format($this->amount, 2, '.', ' '),
-                    $this->description
-                );
-
-                if ($this->comment) {
-                    $message .= "\nКомментарий: {$this->comment}";
-                }
-
-                $bot->sendMessage($message);
-            } else {
-                $bot->sendMessage('❌ Ошибка при выдаче средств. Попробуйте позже.');
-            }
-
-            $this->end();
-        } catch (\Throwable $e) {
-            $this->handleError($bot, $e, 'handleConfirmation');
-        }
-    }
-
-    /**
-     * Get expense service instance.
-     */
-    private function getExpenseService(): ExpenseServiceInterface
-    {
-        return app(ExpenseServiceInterface::class);
     }
 }

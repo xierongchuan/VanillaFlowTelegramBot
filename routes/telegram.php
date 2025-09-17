@@ -133,3 +133,20 @@ $bot->onCallbackQueryData(
 ->middleware(new RoleMiddleware([Role::CASHIER->value]))
 ->middleware(AuthUser::class)
 ->middleware(VCRMUserSyncMiddleware::class);
+
+// Direct Issue Callbacks
+$bot->onCallbackQueryData(
+    'direct_issue:confirm:{id}',
+    \App\Bot\Callbacks\DirectIssueConfirmCallback::class
+)
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
+
+$bot->onCallbackQueryData(
+    'direct_issue:cancel:{id}',
+    \App\Bot\Callbacks\DirectIssueCancelCallback::class
+)
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
