@@ -34,6 +34,29 @@ interface ExpenseServiceInterface
     ): ?int;
 
     /**
+     * Create a new expense request and directly issue it (cashier functionality).
+     * This allows cashiers to directly issue funds without director approval.
+     *
+     * @param Nutgram $bot Bot instance
+     * @param User $cashier User issuing the request (cashier)
+     * @param User $recipient Recipient of the funds
+     * @param string $description Description of the expense
+     * @param float $amount Amount to be issued
+     * @param string $currency Currency code
+     * @param string|null $comment Optional comment
+     * @return int|null Request ID if successful, null otherwise
+     */
+    public function createAndIssueRequest(
+        Nutgram $bot,
+        User $cashier,
+        User $recipient,
+        string $description,
+        float $amount,
+        string $currency = 'UZS',
+        ?string $comment = null
+    ): ?int;
+
+    /**
      * Delete an expense request.
      *
      * @param int $requestId Request ID to delete

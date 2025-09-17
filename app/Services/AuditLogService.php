@@ -120,9 +120,14 @@ class AuditLogService implements AuditLogServiceInterface
     public function logExpenseIssued(
         int $requestId,
         int $cashierId,
-        ?float $issuedAmount = null
+        ?float $issuedAmount = null,
+        ?string $comment = null
     ): void {
-        $this->logExpenseAction($requestId, $cashierId, 'issued', ['issued_amount' => $issuedAmount]);
+        $payload = ['issued_amount' => $issuedAmount];
+        if ($comment !== null) {
+            $payload['comment'] = $comment;
+        }
+        $this->logExpenseAction($requestId, $cashierId, 'issued', $payload);
     }
 
     /**

@@ -57,6 +57,9 @@ trait KeyboardTrait
             ->addRow(
                 KeyboardButton::make('💰 Ожидающие выдачи'),
                 KeyboardButton::make('💼 История операций')
+            )
+            ->addRow(
+                KeyboardButton::make('⚡ Прямая выдача')
             );
     }
 

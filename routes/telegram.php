@@ -76,6 +76,14 @@ $bot->onText(
 ->middleware(AuthUser::class)
 ->middleware(VCRMUserSyncMiddleware::class);
 
+$bot->onText(
+    '⚡ Прямая выдача',
+    \App\Bot\Commands\Cashier\DirectIssueCommand::class
+)
+->middleware(new RoleMiddleware([Role::CASHIER->value]))
+->middleware(AuthUser::class)
+->middleware(VCRMUserSyncMiddleware::class);
+
 // Director Callbacks
 $bot->onCallbackQueryData(
     'expense:confirm:{id}',

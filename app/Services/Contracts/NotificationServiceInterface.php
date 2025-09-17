@@ -74,4 +74,20 @@ interface NotificationServiceInterface
         string $text,
         ?int $messageId = null
     ): bool;
+
+    /**
+     * Send a message to a user.
+     *
+     * @param Nutgram $bot Bot instance
+     * @param string|int $chatId Chat ID to send message to
+     * @param string $text Message text
+     * @param mixed $keyboard Optional keyboard
+     * @return bool Success status
+     */
+    public function sendMessage(
+        Nutgram $bot,
+        string|int $chatId,
+        string $text,
+        $keyboard = null
+    ): bool;
 }

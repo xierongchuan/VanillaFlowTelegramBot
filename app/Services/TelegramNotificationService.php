@@ -222,7 +222,7 @@ class TelegramNotificationService implements NotificationServiceInterface
     /**
      * Send message with error handling.
      */
-    private function sendMessage(
+    public function sendMessage(
         Nutgram $bot,
         string|int $chatId,
         string $text,

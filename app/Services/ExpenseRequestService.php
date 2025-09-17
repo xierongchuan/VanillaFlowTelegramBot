@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\ExpenseStatus;
+use App\Enums\Role;
 use App\Models\ExpenseRequest;
 use App\Models\User;
 use App\Services\Contracts\AuditLogServiceInterface;
@@ -43,6 +44,16 @@ class ExpenseRequestService implements ExpenseServiceInterface
         float $amount,
         string $currency = 'UZS'
     ): ?int {
+        // Check if requester is cashier - if so, deny access
+        if ($requester->role === Role::CASHIER->value) {
+            Log::warning('Cashier attempted to create expense request through createRequest method', [
+                'cashier_id' => $requester->id,
+                'amount' => $amount,
+                'currency' => $currency,
+            ]);
+            return null;
+        }
+
         try {
             $requestId = DB::transaction(function () use ($requester, $description, $amount, $currency) {
                 // Create expense request
@@ -78,6 +89,82 @@ class ExpenseRequestService implements ExpenseServiceInterface
         } catch (Throwable $e) {
             Log::error('Ошибка при создании заявки', [
                 'requester_id' => $requester->id,
+                'amount' => $amount,
+                'currency' => $currency,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Create a new expense request and directly issue it (cashier functionality).
+     * This allows cashiers to directly issue funds without director approval.
+     */
+    public function createAndIssueRequest(
+        Nutgram $bot,
+        User $cashier,
+        User $recipient,
+        string $description,
+        float $amount,
+        string $currency = 'UZS',
+        ?string $comment = null
+    ): ?int {
+        try {
+            $requestId = DB::transaction(function () use ($cashier, $recipient, $description, $amount, $currency, $comment) {
+                // Create expense request with ISSUED status directly
+                $request = ExpenseRequest::create([
+                    'requester_id' => $recipient->id,
+                    'description' => $description,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'status' => ExpenseStatus::ISSUED->value,
+                    'company_id' => $cashier->company_id,
+                    'cashier_id' => $cashier->id, // Using cashier_id to store cashier who issued
+                    'director_comment' => $comment, // Using director_comment to store issuance comment
+                    'approved_at' => now(), // Set approved time for consistency
+                    'issued_at' => now(), // Set issued time
+                ]);
+
+                // Create audit log for creation
+                $this->auditLogService->logExpenseRequestCreated(
+                    $request->id,
+                    $recipient->id,
+                    $amount,
+                    $currency,
+                    $description
+                );
+
+                // Create audit log for issuance
+                $this->auditLogService->logExpenseIssued(
+                    $request->id,
+                    $cashier->id,
+                    null, // issued amount (null means same as requested)
+                    $comment
+                );
+
+                Log::info("Заявка #{$request->id} успешно создана и выдана кассиром {$cashier->id} для пользователя {$recipient->id}");
+
+                return $request->id;
+            });
+
+            // Send notification to director after successful transaction
+            if ($requestId !== null) {
+                $this->notifyDirectorOfDirectIssuance($bot, $cashier, $recipient, $requestId, $comment);
+
+                if ($cashier->id != $recipient->id) {
+                    // Notify recipient about the issuance
+                    $this->notifyRecipientOfIssuance($bot, $recipient, $requestId);
+                }
+            }
+
+            return $requestId;
+        } catch (Throwable $e) {
+            Log::error('Ошибка при создании и выдаче заявки', [
+                'cashier_id' => $cashier->id,
+                'recipient_id' => $recipient->id,
                 'amount' => $amount,
                 'currency' => $currency,
                 'message' => $e->getMessage(),
@@ -178,6 +265,116 @@ class ExpenseRequestService implements ExpenseServiceInterface
             ]);
         } catch (Throwable $e) {
             Log::error('Failed to notify director', [
+                'request_id' => $requestId,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Notify director about direct expense issuance by cashier.
+     */
+    private function notifyDirectorOfDirectIssuance(
+        Nutgram $bot,
+        User $cashier,
+        User $recipient,
+        int $requestId,
+        ?string $comment = null
+    ): void {
+        try {
+            $companyId = $cashier->company_id;
+            if ($companyId === null) {
+                Log::warning('Cashier has no company_id', [
+                    'cashier_id' => $cashier->id,
+                    'request_id' => $requestId
+                ]);
+                return;
+            }
+
+            $director = $this->userFinderService->findDirectorForCompany($companyId);
+
+            if (!$director) {
+                Log::info('No director to notify about direct issuance', [
+                    'company_id' => $companyId,
+                    'request_id' => $requestId
+                ]);
+                return;
+            }
+
+            $request = ExpenseRequest::with('requester')->findOrFail($requestId);
+
+            // Build custom message for direct issuance
+            $message = sprintf(
+                "💰 Кассир %s (ID: %d) выдал средства без подтверждения директора.\n" .
+                "Заявка #%d\nПолучатель: %s (ID: %d)\nСумма: %s %s\nНазначение: %s",
+                $cashier->full_name ?? ($cashier->login ?? 'Unknown'),
+                $cashier->id,
+                $request->id,
+                $recipient->full_name ?? ($recipient->login ?? 'Unknown'),
+                $recipient->id,
+                number_format((float) $request->amount, 2, '.', ' '),
+                $request->currency,
+                $request->description ?: '-'
+            );
+
+            if ($comment) {
+                $message .= "\nКомментарий кассира: {$comment}";
+            }
+
+            // Send notification to director
+            $this->notificationService->sendMessage($bot, $director->telegram_id, $message);
+
+            Log::info('Director notified about direct expense issuance', [
+                'director_id' => $director->id,
+                'cashier_id' => $cashier->id,
+                'request_id' => $requestId,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to notify director of direct issuance', [
+                'request_id' => $requestId,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Notify recipient about direct expense issuance.
+     */
+    private function notifyRecipientOfIssuance(Nutgram $bot, User $recipient, int $requestId): void
+    {
+        try {
+            if (!$recipient->telegram_id) {
+                Log::warning('Recipient has no telegram_id', [
+                    'recipient_id' => $recipient->id,
+                    'request_id' => $requestId
+                ]);
+                return;
+            }
+
+            $request = ExpenseRequest::findOrFail($requestId);
+
+            // Build message for recipient
+            $message = sprintf(
+                "💰 Ваши средства выданы кассиром.\n" .
+                "Заявка #%d\nСумма: %s %s\nНазначение: %s\n" .
+                "Вы можете получить средства у кассира.",
+                $request->id,
+                number_format((float) $request->amount, 2, '.', ' '),
+                $request->currency,
+                $request->description ?: '-'
+            );
+
+            // Send notification to recipient
+            $this->notificationService->sendMessage($bot, $recipient->telegram_id, $message);
+
+            Log::info('Recipient notified about expense issuance', [
+                'recipient_id' => $recipient->id,
+                'request_id' => $requestId,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to notify recipient of expense issuance', [
                 'request_id' => $requestId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
