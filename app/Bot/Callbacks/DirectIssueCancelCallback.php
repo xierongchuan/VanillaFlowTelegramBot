@@ -19,7 +19,6 @@ class DirectIssueCancelCallback extends BaseCallbackHandler
     {
         $this->validateUser($bot);
 
-        // Get stored conversation data
         $callbackData = $bot->getGlobalData("direct_issue:cancel:{$id}", null);
 
         // Update the message to show cancellation
