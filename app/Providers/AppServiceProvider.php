@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use App\Exceptions\Handler as CustomExceptionHandler;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\ExpenseServiceInterface;
 use App\Services\Contracts\NotificationServiceInterface;
@@ -26,6 +28,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Bind our custom exception handler
+        $this->app->singleton(
+            ExceptionHandler::class,
+            CustomExceptionHandler::class
+        );
+
         // Bind interfaces to concrete implementations
         $this->app->bind(
             ExpenseServiceInterface::class,
