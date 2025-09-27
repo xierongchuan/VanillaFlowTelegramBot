@@ -52,10 +52,10 @@ class StartConversationDispatcher
             }
 
             // Диагностический лог (полезно в проде для отладки)
-            Log::debug('expense.command.handler_resolved', [
-                'target' => $target,
-                'handler_class' => is_object($handler) ? get_class($handler) : gettype($handler),
-            ]);
+            // Log::debug('expense.command.handler_resolved', [
+            //     'target' => $target,
+            //     'handler_class' => is_object($handler) ? get_class($handler) : gettype($handler),
+            // ]);
 
             // 1) Conversation — стартуем
             if ($handler instanceof \SergiX44\Nutgram\Conversations\Conversation) {
