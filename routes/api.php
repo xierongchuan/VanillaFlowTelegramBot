@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\V1\UserApiController;
 use App\Http\Controllers\FrontController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Log;
 
 
 // Webhook для Telegram

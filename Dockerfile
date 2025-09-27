@@ -122,14 +122,13 @@ WORKDIR /var/www/src_vanilla_flow_telegram_bot_api
 
 # Копируем из build стадии всё, что нужно для запуска
 COPY --from=build /var/www/src_vanilla_flow_telegram_bot_api /var/www/src_vanilla_flow_telegram_bot_api
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Права на каталоги
 RUN chown -R www-data:www-data storage bootstrap/cache \
   && chmod -R 755 storage bootstrap/cache
 
 # Установка переменных окружения
-ENV LOG_CHANNEL=stderr
+# ENV LOG_CHANNEL=stderr
 
 EXPOSE 9000
 
