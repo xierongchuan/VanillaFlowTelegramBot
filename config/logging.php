@@ -84,6 +84,13 @@ return [
             'processors' => [PsrLogMessageProcessor::class],
         ],
 
+        'telegram' => [
+            'driver' => 'custom',
+            'via' => \Nutgram\Laravel\Log\NutgramLogger::class,
+            'level' => 'debug',
+            'chat_id' => env('NUTGRAM_LOG_CHAT_ID'),
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

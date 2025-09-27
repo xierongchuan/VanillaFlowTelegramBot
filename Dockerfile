@@ -42,4 +42,4 @@ RUN chown -R www-data:www-data storage storage/framework bootstrap/cache && \
 EXPOSE 9000
 
 # 9) Запуск контейнера
-CMD ["bash", "-lc", "/wait-for-it.sh postgres:5432 --timeout=30 --strict -- composer install --optimize-autoloader --no-dev --no-scripts && php artisan migrate && exec php-fpm"]
+CMD ["bash", "-lc", "/wait-for-it.sh postgres:5432 --timeout=30 --strict -- composer install --optimize-autoloader --no-dev --no-scripts && php artisan migrate && exec php-fpm -F"]
