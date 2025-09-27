@@ -13,7 +13,6 @@ class FrontController extends Controller
      */
     public function webhook(Nutgram $bot)
     {
-        Log::info('Received request');
         $bot->run();
     }
 }
