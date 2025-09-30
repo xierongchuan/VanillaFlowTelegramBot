@@ -64,9 +64,12 @@ abstract class BaseConversation extends Conversation implements ConversationInte
             'trace' => $e->getTraceAsString(),
         ]);
 
+        // Try to get keyboard, but use removeKeyboard if user not authenticated
+        $keyboard = $this->getDefaultKeyboard();
+
         $bot->sendMessage(
             'Произошла ошибка. Попробуйте начать заново.',
-            reply_markup: $this->getDefaultKeyboard()
+            reply_markup: $keyboard
         );
 
         $this->end();
@@ -78,6 +81,25 @@ abstract class BaseConversation extends Conversation implements ConversationInte
      */
     protected function getDefaultKeyboard()
     {
+        // Check if user is authenticated before accessing role
+        $user = auth()->user();
+        if (!$user) {
+            return static::removeKeyboard();
+        }
+
+        // Import Role enum if it's used in concrete implementations
+        if (class_exists('\App\Enums\Role')) {
+            $role = \App\Enums\Role::tryFromString($user->role);
+            if ($role) {
+                return match ($role) {
+                    \App\Enums\Role::USER => static::userMenu(),
+                    \App\Enums\Role::CASHIER => static::cashierMenu(),
+                    \App\Enums\Role::DIRECTOR => static::directorMenu(),
+                    default => static::removeKeyboard()
+                };
+            }
+        }
+
         return static::removeKeyboard();
     }
 

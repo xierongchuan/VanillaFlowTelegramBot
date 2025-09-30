@@ -136,7 +136,13 @@ MSG,
      */
     protected function getDefaultKeyboard()
     {
-        $role = Role::tryFromString(auth()->user()->role);
+        // Check if user is authenticated before accessing role
+        $user = auth()->user();
+        if (!$user) {
+            return static::removeKeyboard();
+        }
+
+        $role = Role::tryFromString($user->role);
         return match ($role) {
             Role::USER => static::userMenu(),
             Role::CASHIER => static::cashierMenu(),
