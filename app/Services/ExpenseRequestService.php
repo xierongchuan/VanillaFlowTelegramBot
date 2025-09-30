@@ -45,14 +45,14 @@ class ExpenseRequestService implements ExpenseServiceInterface
         string $currency = 'UZS'
     ): ?int {
         // Check if requester is cashier - if so, deny access
-        if ($requester->role === Role::CASHIER->value) {
-            Log::warning('Cashier attempted to create expense request through createRequest method', [
-                'cashier_id' => $requester->id,
-                'amount' => $amount,
-                'currency' => $currency,
-            ]);
-            return null;
-        }
+        // if ($requester->role === Role::CASHIER->value) {
+        //     Log::warning('Cashier attempted to create expense request through createRequest method', [
+        //         'cashier_id' => $requester->id,
+        //         'amount' => $amount,
+        //         'currency' => $currency,
+        //     ]);
+        //     return null;
+        // }
 
         try {
             $requestId = DB::transaction(function () use ($requester, $description, $amount, $currency) {
