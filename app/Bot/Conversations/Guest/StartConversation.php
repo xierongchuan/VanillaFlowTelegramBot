@@ -72,6 +72,10 @@ class StartConversation extends BaseConversation
                 return;
             }
 
+            if ($vcrmUser->role === 'user') {
+                throw new \RuntimeException('Ограничен доступ к системе');
+            }
+
             // Register or update user
             User::updateOrCreate(
                 ['phone' => $vcrmUser->phoneNumber],
