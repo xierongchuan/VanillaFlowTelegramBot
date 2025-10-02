@@ -92,6 +92,16 @@ class HistoryCommand extends BaseCommandHandler
                 }
             }
 
+
+            if (!empty($request->description)) {
+                $message .= "💬 Цель расхода: {$request->description}\n";
+            }
+
+            // Add director comment if available
+            if (!empty($request->director_comment)) {
+                $message .= "💬 Комментарий Директора: {$request->director_comment}\n";
+            }
+
             $message .= "\n";
         }
 
