@@ -177,15 +177,15 @@ class IssueDifferentAmountConversation extends BaseConversationHandler
 
             // Send notification to requester about the issued amount
             $request = ExpenseRequest::with('requester')->findOrFail($requestId);
-            if ($request->requester) {
-                $this->getNotificationService()->notifyExpenseStatus(
-                    $bot,
-                    $request->requester,
-                    $request,
-                    ExpenseStatus::ISSUED->value,
-                    "Выдана сумма: " . number_format($newAmount, 2, '.', ' ') . " " . $request->currency
-                );
-            }
+            // if ($request->requester) {
+            //     $this->getNotificationService()->notifyExpenseStatus(
+            //         $bot,
+            //         $request->requester,
+            //         $request,
+            //         ExpenseStatus::ISSUED->value,
+            //         "Выдана сумма: " . number_format($newAmount, 2, '.', ' ') . " " . $request->currency
+            //     );
+            // }
 
             Log::info("Заявка #{$requestId} выдана кассиром {$cashier->id} с измененной суммой: {$newAmount}");
 

@@ -242,12 +242,12 @@ class ExpenseApprovalService implements ExpenseApprovalServiceInterface
                 );
 
                 // Notify requester about issuance
-                $this->notificationService->notifyExpenseStatus(
-                    $bot,
-                    $request->requester,
-                    $request,
-                    ExpenseStatus::ISSUED->value
-                );
+                // $this->notificationService->notifyExpenseStatus(
+                //     $bot,
+                //     $request->requester,
+                //     $request,
+                //     ExpenseStatus::ISSUED->value
+                // );
 
                 Log::info("Expense issued", [
                     'request_id' => $requestId,

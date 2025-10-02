@@ -156,7 +156,7 @@ class ExpenseRequestService implements ExpenseServiceInterface
 
                 if ($cashier->id != $recipient->id) {
                     // Notify recipient about the issuance
-                    $this->notifyRecipientOfIssuance($bot, $recipient, $requestId);
+                    // $this->notifyRecipientOfIssuance($bot, $recipient, $requestId);
                 }
             }
 
